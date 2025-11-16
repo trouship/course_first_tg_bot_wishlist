@@ -3,7 +3,7 @@ package events
 import "context"
 
 type Fetcher interface {
-	Fetch(ctx context.Context, limit int) ([]Event, error)
+	Fetch(ctx context.Context, limit int, timeout int) ([]Event, error)
 }
 
 type Processor interface {

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"path"
 	"strconv"
-
 	"tg_game_wishlist/lib/e"
 )
 
@@ -49,7 +48,7 @@ func (c *Client) Updates(ctx context.Context, offset int, limit int, timeout int
 	}
 
 	var res UpdatesResponse
- 
+
 	if err := json.Unmarshal(data, &res); err != nil {
 		return nil, err
 	}
