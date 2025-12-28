@@ -22,6 +22,7 @@ CREATE TABLE wishlist (
 	FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
 	FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE,
 	
+	UNIQUE KEY unique_external (source, external_id),
 	UNIQUE KEY (user_id, game_id)
 )
 
