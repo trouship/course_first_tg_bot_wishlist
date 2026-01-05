@@ -38,7 +38,7 @@ type Game struct {
 	Name        string
 	ReleaseDate time.Time
 	Source      Source
-	ExternalId  string
+	ExternalURL string
 }
 
 type User struct {

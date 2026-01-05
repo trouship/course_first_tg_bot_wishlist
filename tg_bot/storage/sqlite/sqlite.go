@@ -89,10 +89,10 @@ func (s *Storage) getOrCreateUser(ctx context.Context, userName string) (int, er
 func (s *Storage) gameId(ctx context.Context, g storage.Game) (int, error) {
 	q := `SELECT id 
 		  FROM game 
-		  WHERE name = ? AND external_id = ? AND source = ?`
+		  WHERE name = ? AND external_url = ? AND source = ?`
 
 	var id int
-	err := s.db.QueryRowContext(ctx, q, g.Name, g.ExternalId, g.Source).Scan(&id)
+	err := s.db.QueryRowContext(ctx, q, g.Name, g.ExternalURL, g.Source).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return -1, err
@@ -104,9 +104,9 @@ func (s *Storage) gameId(ctx context.Context, g storage.Game) (int, error) {
 }
 
 func (s *Storage) addGame(ctx context.Context, g storage.Game) (int, error) {
-	q := `INSERT INTO game (name, source, external_id, release_date) VALUES(?,?,?,?)`
+	q := `INSERT INTO game (name, source, external_url, release_date) VALUES(?,?,?,?)`
 
-	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalId, g.ReleaseDate)
+	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalURL, g.ReleaseDate)
 	if err != nil {
 		return -1, e.Wrap("can't add game", err)
 	}
@@ -147,9 +147,9 @@ func (s *Storage) getGamesFromSqliteQuery(ctx context.Context, query string, arg
 	for rows.Next() {
 		var g storage.Game
 		var releaseDate sql.NullTime
-		var externalId sql.NullString
+		var externalURL sql.NullString
 
-		err = rows.Scan(&g.Id, &g.Name, &releaseDate, &g.Source, &externalId)
+		err = rows.Scan(&g.Id, &g.Name, &releaseDate, &g.Source, &externalURL)
 		if err != nil {
 			return nil, e.Wrap("can't scan game", err)
 		}
@@ -157,8 +157,8 @@ func (s *Storage) getGamesFromSqliteQuery(ctx context.Context, query string, arg
 		if releaseDate.Valid {
 			g.ReleaseDate = releaseDate.Time
 		}
-		if externalId.Valid {
-			g.ExternalId = externalId.String
+		if externalURL.Valid {
+			g.ExternalURL = externalURL.String
 		}
 
 		games = append(games, g)
@@ -173,7 +173,7 @@ func (s *Storage) getGamesFromSqliteQuery(ctx context.Context, query string, arg
 
 func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, error) {
 	q := `
-		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		SELECT g.id, g.name, g.release_date, g.source, g.external_url
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ?
@@ -190,7 +190,7 @@ func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, 
 
 func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.Game, error) {
 	q := `
-		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		SELECT g.id, g.name, g.release_date, g.source, g.external_url
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ? AND g.release_date <= date('now')
@@ -207,7 +207,7 @@ func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.G
 
 func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage.Game, error) {
 	q := `
-		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		SELECT g.id, g.name, g.release_date, g.source, g.external_url
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ? AND g.release_date > date('now')
@@ -235,7 +235,7 @@ func (s *Storage) Remove(ctx context.Context, w *storage.Wishlist) error {
 
 func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.added_at, w.notified_at, g.id, g.external_id, g.source, g.name, g.release_date, u.id, u.name
+		SELECT w.id, w.added_at, w.notified_at, g.id, g.external_url, g.source, g.name, g.release_date, u.id, u.name
     	FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
     	INNER JOIN user u ON w.user_id = u.id
@@ -256,11 +256,11 @@ func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 
 		var g storage.Game
 		var releaseDate sql.NullTime
-		var externalId sql.NullString
+		var externalURL sql.NullString
 
 		var u storage.User
 
-		err = rows.Scan(&w.Id, &w.AddedAt, notifiedAt, &g.Id, &externalId, &g.Source, &g.Name, &releaseDate, &u.Id, &u.Name)
+		err = rows.Scan(&w.Id, &w.AddedAt, notifiedAt, &g.Id, &externalURL, &g.Source, &g.Name, &releaseDate, &u.Id, &u.Name)
 		if err != nil {
 			return nil, e.Wrap("can't scan wishlist", err)
 		}
@@ -272,8 +272,8 @@ func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 		if releaseDate.Valid {
 			g.ReleaseDate = releaseDate.Time
 		}
-		if externalId.Valid {
-			g.ExternalId = externalId.String
+		if externalURL.Valid {
+			g.ExternalURL = externalURL.String
 		}
 
 		w.Game = g
@@ -321,13 +321,13 @@ func (s *Storage) Init(ctx context.Context) error {
 		
 		CREATE TABLE game (
 			id INT PRIMARY_KEY AUTO_INCREMENT,
-			external_id VARCHAR(255) NULL
+			external_url VARCHAR(500) NULL
 			source VARCHAR(255) NOT NULL
 			name VARCHAR(255) NOT NULL
 			release_date DATETIME NULL
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 			    
-			UNIQUE KEY unique_external (source, external_id)
+			UNIQUE KEY unique_external (source, external_url)
 		);
 		
 		CREATE TABLE wishlist (

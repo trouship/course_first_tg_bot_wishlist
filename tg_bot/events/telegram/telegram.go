@@ -6,11 +6,12 @@ import (
 	"tg_game_wishlist/clients/telegram"
 	"tg_game_wishlist/events"
 	"tg_game_wishlist/lib/e"
+	"tg_game_wishlist/storage"
 )
 
 type Processor struct {
-	tg *telegram.Client
-	//TODO storage storage.Storage
+	tg      *telegram.Client
+	storage storage.Storage
 }
 
 type Fetcher struct {
@@ -28,10 +29,10 @@ var (
 	ErrUnknownMetaType  = errors.New("unknown meta type")
 )
 
-func New(client *telegram.Client /*TODO ,storage storage.Storage*/) *Processor {
+func New(client *telegram.Client, storage storage.Storage) *Processor {
 	return &Processor{
-		tg: client,
-		//TODO storage: storage,
+		tg:      client,
+		storage: storage,
 	}
 }
 
