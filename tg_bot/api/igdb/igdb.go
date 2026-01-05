@@ -12,6 +12,6 @@ type Finder struct {
 	client        http.Client
 }
 
-func newAuthorization(token_type, token string) string {
-	return strings.ToTitle(token_type) + token
+func newAuthorization(tokenType, token string) string {
+	return strings.ToTitle(tokenType) + token
 }
