@@ -5,11 +5,13 @@ CREATE TABLE user (
 
 CREATE TABLE game (
 	id INT PRIMARY_KEY AUTO_INCREMENT,
-	external_id VARCHAR(255) NULL
+	external_url VARCHAR(500) NULL
 	source VARCHAR(255) NOT NULL
 	name VARCHAR(255) NOT NULL
 	release_date DATETIME NULL
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		
+	UNIQUE KEY unique_external (source, external_url)
 );
 
 CREATE TABLE wishlist (
@@ -22,9 +24,5 @@ CREATE TABLE wishlist (
 	FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
 	FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE,
 	
-	UNIQUE KEY unique_external (source, external_id),
 	UNIQUE KEY (user_id, game_id)
 )
-
-
-

@@ -314,7 +314,8 @@ func New(path string) (*Storage, error) {
 }
 
 func (s *Storage) Init(ctx context.Context) error {
-	q := `CREATE TABLE user (
+	q := `
+		CREATE TABLE user (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			name VARCHAR(255) NOT NULL
 		);
@@ -341,7 +342,8 @@ func (s *Storage) Init(ctx context.Context) error {
 			FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE,
 			
 			UNIQUE KEY (user_id, game_id)
-		)`
+		)
+	`
 
 	_, err := s.db.ExecContext(ctx, q)
 	if err != nil {
