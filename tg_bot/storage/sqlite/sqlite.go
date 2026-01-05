@@ -135,16 +135,8 @@ func (s *Storage) getOrCreateGame(ctx context.Context, g storage.Game) (int, err
 	return gameId, nil
 }
 
-func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, error) {
-	q := `
-		SELECT g.id, g.name, g.release_date, g.source, g.external_id
-		FROM wishlist w
-		INNER JOIN game g on w.game_id = g.id
-		WHERE w.user_id = ?
-		ORDER BY w.added_at DESC
-	`
-
-	rows, err := s.db.QueryContext(ctx, q, u.Id)
+func (s *Storage) getGamesFromSqliteQuery(ctx context.Context, query string, args ...any) ([]storage.Game, error) {
+	rows, err := s.db.QueryContext(ctx, query, args)
 	if err != nil {
 		return nil, e.Wrap("can't select games", err)
 	}
@@ -179,29 +171,133 @@ func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, 
 	return games, nil
 }
 
+func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, error) {
+	q := `
+		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		FROM wishlist w
+		INNER JOIN game g ON w.game_id = g.id
+		WHERE w.user_id = ?
+		ORDER BY w.added_at DESC
+	`
+
+	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
+	if err != nil {
+		return nil, e.Wrap("can't get all games", err)
+	}
+
+	return games, nil
+}
+
 func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.Game, error) {
-	//TODO implement me
-	panic("implement me")
+	q := `
+		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		FROM wishlist w
+		INNER JOIN game g ON w.game_id = g.id
+		WHERE w.user_id = ? AND g.release_date <= date('now')
+		ORDER BY w.added_at DESC
+	`
+
+	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
+	if err != nil {
+		return nil, e.Wrap("can't get released games", err)
+	}
+
+	return games, nil
 }
 
 func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage.Game, error) {
-	//TODO implement me
-	panic("implement me")
+	q := `
+		SELECT g.id, g.name, g.release_date, g.source, g.external_id
+		FROM wishlist w
+		INNER JOIN game g ON w.game_id = g.id
+		WHERE w.user_id = ? AND g.release_date > date('now')
+		ORDER BY w.added_at DESC
+	`
+
+	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
+	if err != nil {
+		return nil, e.Wrap("can't get unreleased games", err)
+	}
+
+	return games, nil
 }
 
 func (s *Storage) Remove(ctx context.Context, w *storage.Wishlist) error {
-	//TODO implement me
-	panic("implement me")
+	q := `DELETE FROM wishlist WHERE id = ?`
+
+	_, err := s.db.ExecContext(ctx, q, w.Id)
+	if err != nil {
+		return e.Wrap("can't remove wishlist", err)
+	}
+
+	return nil
 }
 
 func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
-	//TODO implement me
-	panic("implement me")
+	q := `
+		SELECT w.id, w.added_at, w.notified_at, g.id, g.external_id, g.source, g.name, g.release_date, u.id, u.name
+    	FROM wishlist w
+		INNER JOIN game g ON w.game_id = g.id
+    	INNER JOIN user u ON w.user_id = u.id
+		WHERE w.notified_at NULL AND g.release_date >= date('now')
+    `
+
+	rows, err := s.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, e.Wrap("can't get wishlist to notify", err)
+	}
+	defer rows.Close()
+
+	var wishlist []storage.Wishlist
+
+	for rows.Next() {
+		var w storage.Wishlist
+		var notifiedAt sql.NullTime
+
+		var g storage.Game
+		var releaseDate sql.NullTime
+		var externalId sql.NullString
+
+		var u storage.User
+
+		err = rows.Scan(&w.Id, &w.AddedAt, notifiedAt, &g.Id, &externalId, &g.Source, &g.Name, &releaseDate, &u.Id, &u.Name)
+		if err != nil {
+			return nil, e.Wrap("can't scan wishlist", err)
+		}
+
+		if notifiedAt.Valid {
+			w.NotifiedAt = notifiedAt.Time
+		}
+
+		if releaseDate.Valid {
+			g.ReleaseDate = releaseDate.Time
+		}
+		if externalId.Valid {
+			g.ExternalId = externalId.String
+		}
+
+		w.Game = g
+		w.User = u
+
+		wishlist = append(wishlist, w)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, e.Wrap("rows iteration error", err)
+	}
+
+	return wishlist, nil
 }
 
 func (s *Storage) Notify(ctx context.Context, w *storage.Wishlist) error {
-	//TODO implement me
-	panic("implement me")
+	q := `UPDATE wishlist SET notified_at = date('now') WHERE id = ?`
+
+	_, err := s.db.ExecContext(ctx, q, w.Id)
+	if err != nil {
+		return e.Wrap("can't edit notify wishlist", err)
+	}
+
+	return nil
 }
 
 func New(path string) (*Storage, error) {
