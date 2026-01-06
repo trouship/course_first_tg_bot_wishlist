@@ -1,9 +1,12 @@
 package api
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Finder interface {
-	Find(name string) ([]SearchResult, error)
+	Find(ctx context.Context, name string) ([]SearchResult, error)
 }
 
 type SearchResult struct {
