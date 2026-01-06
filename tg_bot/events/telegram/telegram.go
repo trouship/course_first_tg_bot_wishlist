@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"tg_game_wishlist/api"
 	"tg_game_wishlist/clients/telegram"
 	"tg_game_wishlist/events"
 	"tg_game_wishlist/lib/e"
@@ -11,6 +12,7 @@ import (
 
 type Processor struct {
 	tg      *telegram.Client
+	finder  *api.Finder
 	storage storage.Storage
 }
 
@@ -29,9 +31,10 @@ var (
 	ErrUnknownMetaType  = errors.New("unknown meta type")
 )
 
-func New(client *telegram.Client, storage storage.Storage) *Processor {
+func New(client *telegram.Client, finder *api.Finder, storage storage.Storage) *Processor {
 	return &Processor{
 		tg:      client,
+		finder:  finder,
 		storage: storage,
 	}
 }
@@ -39,19 +42,21 @@ func New(client *telegram.Client, storage storage.Storage) *Processor {
 func (p *Processor) Process(ctx context.Context, event events.Event) error {
 	switch event.Type {
 	case events.Message:
-		return p.processMessage(event)
+		return p.processMessage(ctx, event)
 	default:
 		return e.Wrap("can't process event", ErrUnknownEventType)
 	}
 }
 
-func (p *Processor) processMessage(event events.Event) error {
+func (p *Processor) processMessage(ctx context.Context, event events.Event) error {
 	meta, err := meta(event)
 	if err != nil {
 		return e.Wrap("can't process message", err)
 	}
 
-	//TODO docmd
+	if err := p.doCmd(ctx, event.Text, meta.ChatId, meta.UserName); err != nil {
+		return e.Wrap("can't process message", err)
+	}
 
 	return nil
 }
