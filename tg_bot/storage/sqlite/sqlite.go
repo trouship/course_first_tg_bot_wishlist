@@ -6,10 +6,17 @@ import (
 	"errors"
 	"tg_game_wishlist/lib/e"
 	"tg_game_wishlist/storage"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Storage struct {
 	db *sql.DB
+}
+
+func (s *Storage) GetUserByName(ctx context.Context, userName string) (storage.User, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
@@ -315,34 +322,34 @@ func New(path string) (*Storage, error) {
 
 func (s *Storage) Init(ctx context.Context) error {
 	q := `
-		CREATE TABLE user (
-			id INT PRIMARY KEY AUTO_INCREMENT,
+		CREATE TABLE IF NOT EXISTS user (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name VARCHAR(255) NOT NULL
 		);
 		
-		CREATE TABLE game (
-			id INT PRIMARY_KEY AUTO_INCREMENT,
-			external_url VARCHAR(500) NULL
-			source VARCHAR(255) NOT NULL
-			name VARCHAR(255) NOT NULL
-			release_date DATETIME NULL
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-			    
-			UNIQUE KEY unique_external (source, external_url)
+		CREATE TABLE IF NOT EXISTS game (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			external_url VARCHAR(500) NULL,
+			source VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			release_date DATETIME NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			
+			UNIQUE(source, external_url)
 		);
 		
-		CREATE TABLE wishlist (
-			id INT PRIMARY KEY AUTO_INCREMENT,
-			user_id INT NOT NULL,
-			game_id INT NOT NULL,
+		CREATE TABLE IF NOT EXISTS wishlist (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			game_id INTEGER NOT NULL,
 			added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			notified_at DATETIME NULL,
 			
 			FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
 			FOREIGN KEY (game_id) REFERENCES game(id) ON DELETE CASCADE,
 			
-			UNIQUE KEY (user_id, game_id)
-		)
+			UNIQUE(user_id, game_id)
+		);
 	`
 
 	_, err := s.db.ExecContext(ctx, q)

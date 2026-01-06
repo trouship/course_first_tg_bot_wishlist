@@ -21,7 +21,7 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 }
 
 func (p *Processor) searchGame(ctx context.Context, text string, chatID int, userName string) (err error) {
-	defer func() { err = e.WrapIfErr("can't search game", err) }()
+	defer func() { err = e.WrapIfNil("can't search game", err) }()
 
 	var res []api.SearchResult
 	res, err = p.finder.Find(ctx, text)

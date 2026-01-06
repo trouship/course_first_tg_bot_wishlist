@@ -12,7 +12,7 @@ import (
 
 type Processor struct {
 	tg      *telegram.Client
-	finder  *api.Finder
+	finder  api.Finder
 	storage storage.Storage
 }
 
@@ -31,11 +31,17 @@ var (
 	ErrUnknownMetaType  = errors.New("unknown meta type")
 )
 
-func New(client *telegram.Client, finder *api.Finder, storage storage.Storage) *Processor {
+func NewProcessor(client *telegram.Client, finder api.Finder, storage storage.Storage) *Processor {
 	return &Processor{
 		tg:      client,
 		finder:  finder,
 		storage: storage,
+	}
+}
+
+func NewFetcher(client *telegram.Client) *Fetcher {
+	return &Fetcher{
+		tg: client,
 	}
 }
 
