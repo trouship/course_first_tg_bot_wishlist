@@ -46,7 +46,7 @@ func (c *Client) Updates(ctx context.Context, offset int, limit int, timeout int
 	q.Add("limit", strconv.Itoa(limit))
 	q.Add("timeout", strconv.Itoa(timeout))
 
-	data, err := c.doRequest(ctx, getUpdatesMethod, q)
+	data, err := c.doRequest(ctx, getUpdatesMethod, http.MethodGet, q)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *Client) SendMessage(ctx context.Context, chatId int, text string) error
 	q.Add("chat_id", strconv.Itoa(chatId))
 	q.Add("text", text)
 
-	_, err := c.doRequest(ctx, sendMessageMethod, q)
+	_, err := c.doRequest(ctx, sendMessageMethod, http.MethodGet, q)
 	if err != nil {
 		return e.Wrap("can't send message", err)
 	}
@@ -74,11 +74,26 @@ func (c *Client) SendMessage(ctx context.Context, chatId int, text string) error
 }
 
 func (c *Client) SendMessageWithKeyboard(ctx context.Context, chatId int, text string, keyboard *InlineKeyboardMarkup) error {
-	
+	jsonKeyboard, err := json.Marshal(keyboard)
+	if err != nil {
+		return e.Wrap("can't marshal inline keyboard in message", err)
+	}
+
+	q := url.Values{}
+	q.Add("chat_id", strconv.Itoa(chatId))
+	q.Add("text", text)
+	q.Add("reply_markup", string(jsonKeyboard))
+
+	_, err = c.doRequest(ctx, sendMessageMethod, http.MethodPost, q)
+	if err != nil {
+		return e.Wrap("can't send message with inline keyboard", err)
+	}
+
+	return nil
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, q url.Values) (data []byte, err error) {
-	defer func() { err = e.WrapIfNil("can't do request", err) }()
+func (c *Client) doRequest(ctx context.Context, method string, httpMethod string, q url.Values) (data []byte, err error) {
+	defer func() { err = e.WrapIfNil("can't do get request", err) }()
 
 	u := url.URL{
 		Scheme: "https",
@@ -87,7 +102,7 @@ func (c *Client) doRequest(ctx context.Context, method string, q url.Values) (da
 	}
 
 	log.Print(u.String())
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, httpMethod, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}

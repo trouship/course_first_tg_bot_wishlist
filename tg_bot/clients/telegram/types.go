@@ -8,7 +8,7 @@ type UpdatesResponse struct {
 type Update struct {
 	Id            int              `json:"update_id"`
 	Message       *IncomingMessage `json:"message"`
-	CallbackQuery CallbackQuery    `json:"callback_query"`
+	CallbackQuery *CallbackQuery   `json:"callback_query"`
 }
 
 type IncomingMessage struct {
@@ -31,12 +31,6 @@ type CallbackQuery struct {
 	From    From             `json:"from"`
 	Message *IncomingMessage `json:"message"`
 	Data    string           `json:"data"`
-}
-
-type SendMessageRequest struct {
-	ChatId      int                   `json:"chat_id"`
-	Text        string                `json:"text"`
-	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
 }
 
 type InlineKeyboardMarkup struct {

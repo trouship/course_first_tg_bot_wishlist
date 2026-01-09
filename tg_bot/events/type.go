@@ -15,6 +15,7 @@ type Type int
 const (
 	Unknown = iota
 	Message
+	CallbackQuery
 )
 
 type Event struct {

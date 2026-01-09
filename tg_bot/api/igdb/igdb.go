@@ -24,7 +24,7 @@ type Finder struct {
 
 const (
 	gamesMethod = "v4/games"
-	gamesParam  = "; fields name,url,release_dates.date,release_dates.platform.abbreviation; where version_parent = null & game_type = 0;"
+	gamesParam  = "; fields name,url,release_dates.date,release_dates.platform.abbreviation; where version_parent = null & game_type = 0; limit 50;"
 )
 
 func New(host, clientId, tokenType, token string) *Finder {

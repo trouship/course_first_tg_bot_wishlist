@@ -1,10 +1,11 @@
 package telegram
 
 import (
-	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"tg_game_wishlist/api"
+	"tg_game_wishlist/clients/telegram"
 	"tg_game_wishlist/lib/e"
 )
 
@@ -15,12 +16,18 @@ const (
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
 	//text = strings.TrimSpace(text)
 
-	log.Printf("got new commands '%s' from '%s'", text, userName)
+	log.Printf("got new command '%s' from '%s'", text, userName)
 
-	return p.searchGame(ctx, text, chatID, userName)
+	return p.searchGame(ctx, text, chatID)
 }
 
-func (p *Processor) searchGame(ctx context.Context, text string, chatID int, userName string) (err error) {
+func (p *Processor) doCallback(ctx context.Context, text string, chatID int, userName string) error {
+	log.Printf("got new callback '%s' from '%s'", text, userName)
+
+	return nil
+}
+
+func (p *Processor) searchGame(ctx context.Context, text string, chatID int) (err error) {
 	defer func() { err = e.WrapIfNil("can't search game", err) }()
 
 	var res []api.SearchResult
@@ -29,11 +36,17 @@ func (p *Processor) searchGame(ctx context.Context, text string, chatID int, use
 		return err
 	}
 
-	var buffer bytes.Buffer
+	var buttons [][]telegram.InlineKeyboardButton
 
-	for _, game := range res {
-		buffer.WriteString(game.Name + "\n")
+	for i, game := range res {
+		button := telegram.InlineKeyboardButton{
+			Text:         fmt.Sprintf("🎮 %s", game.Name),
+			CallbackData: fmt.Sprintf("add:%d", i),
+		}
+		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
 	}
 
-	return p.tg.SendMessage(ctx, chatID, buffer.String())
+	return p.tg.SendMessageWithKeyboard(ctx, chatID, "Выберите игру: ", &telegram.InlineKeyboardMarkup{
+		InlineKeyboard: buttons,
+	})
 }
