@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	tgBotHost         = "api.telegram.org"
-	batchSize         = 100
-	timeout           = 60
-	igdbHost          = "api.igdb.com/v4"
-	sqliteStoragePath = "storage.db"
+	tgBotHost           = "api.telegram.org"
+	batchSize           = 100
+	timeout             = 60
+	httpTimeoutAddition = 5
+	igdbHost            = "api.igdb.com"
+	sqliteStoragePath   = "storage.db"
 )
 
 func init() {
@@ -43,11 +44,11 @@ func main() {
 	apiToken := mustEnv("API_TOKEN")
 	apiTokenType := mustEnv("API_TOKEN_TYPE")
 
-	client := tgClient.New(tgBotHost, token)
+	client := tgClient.New(tgBotHost, token, timeout+httpTimeoutAddition)
 
 	processor := telegram.NewProcessor(
 		client,
-		igdb.New(igdbHost, apiClientId, apiToken, apiTokenType),
+		igdb.New(igdbHost, apiClientId, apiTokenType, apiToken),
 		s,
 	)
 

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"tg_game_wishlist/lib/e"
+	"time"
 )
 
 type Client struct {
@@ -22,11 +24,13 @@ const (
 	sendMessageMethod = "sendMessage"
 )
 
-func New(host string, token string) *Client {
+func New(host string, token string, timeout int) *Client {
 	return &Client{
 		host:     host,
 		basePath: newBasePath(token),
-		client:   http.Client{},
+		client: http.Client{
+			Timeout: 65 * time.Second,
+		},
 	}
 }
 
@@ -69,6 +73,10 @@ func (c *Client) SendMessage(ctx context.Context, chatId int, text string) error
 	return nil
 }
 
+func (c *Client) SendMessageWithKeyboard(ctx context.Context, chatId int, text string, keyboard *InlineKeyboardMarkup) error {
+	
+}
+
 func (c *Client) doRequest(ctx context.Context, method string, q url.Values) (data []byte, err error) {
 	defer func() { err = e.WrapIfNil("can't do request", err) }()
 
@@ -78,6 +86,7 @@ func (c *Client) doRequest(ctx context.Context, method string, q url.Values) (da
 		Path:   path.Join(c.basePath, method),
 	}
 
+	log.Print(u.String())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err

@@ -32,9 +32,7 @@ func (p *Processor) searchGame(ctx context.Context, text string, chatID int, use
 	var buffer bytes.Buffer
 
 	for _, game := range res {
-		for _, rDate := range game.ReleaseDates {
-			buffer.WriteString(game.Name + "\t" + rDate.Date.String())
-		}
+		buffer.WriteString(game.Name + "\n")
 	}
 
 	return p.tg.SendMessage(ctx, chatID, buffer.String())

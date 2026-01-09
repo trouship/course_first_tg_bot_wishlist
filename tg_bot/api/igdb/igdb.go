@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"tg_game_wishlist/api"
 	"tg_game_wishlist/lib/e"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Finder struct {
@@ -19,8 +23,8 @@ type Finder struct {
 }
 
 const (
-	gamesMethod = "games"
-	gamesParam  = "; fields name,url,release_dates.date,release_dates.platform.abbreviation; where version_parent = null;"
+	gamesMethod = "v4/games"
+	gamesParam  = "; fields name,url,release_dates.date,release_dates.platform.abbreviation; where version_parent = null & game_type = 0;"
 )
 
 func New(host, clientId, tokenType, token string) *Finder {
@@ -32,14 +36,17 @@ func New(host, clientId, tokenType, token string) *Finder {
 	}
 }
 
+var authCaser = cases.Title(language.Und)
+
 func newAuthorization(tokenType, token string) string {
-	return strings.ToTitle(tokenType) + token
+	return authCaser.String(tokenType) + " " + token
 }
 
 func (f *Finder) Find(ctx context.Context, name string) (res []api.SearchResult, err error) {
 	defer func() { err = e.WrapIfNil("can't find game", err) }()
 
-	reqBody := "search" + name + gamesParam
+	reqBody := "search \"" + name + "\"" + gamesParam
+	log.Print(reqBody)
 
 	data, err := f.doRequest(ctx, gamesMethod, nil, reqBody)
 	if err != nil {
@@ -89,6 +96,7 @@ func (f *Finder) doRequest(ctx context.Context, method string, q url.Values, req
 		Path:   method,
 	}
 
+	log.Print(u.String())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), strings.NewReader(reqBody))
 	if err != nil {
 		return nil, err
@@ -107,6 +115,7 @@ func (f *Finder) doRequest(ctx context.Context, method string, q url.Values, req
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
+	log.Print(string(body))
 	if err != nil {
 		return nil, err
 	}

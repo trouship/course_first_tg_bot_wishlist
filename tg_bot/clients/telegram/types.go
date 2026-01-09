@@ -2,12 +2,13 @@ package telegram
 
 type UpdatesResponse struct {
 	Ok     bool     `json:"ok"`
-	Result []Update `json:"updates"`
+	Result []Update `json:"result"`
 }
 
 type Update struct {
-	Id      int              `json:"update_id"`
-	Message *IncomingMessage `json:"message"`
+	Id            int              `json:"update_id"`
+	Message       *IncomingMessage `json:"message"`
+	CallbackQuery CallbackQuery    `json:"callback_query"`
 }
 
 type IncomingMessage struct {
@@ -22,4 +23,31 @@ type Chat struct {
 
 type From struct {
 	Username string `json:"username"`
+}
+
+//Inline
+
+type CallbackQuery struct {
+	From    From             `json:"from"`
+	Message *IncomingMessage `json:"message"`
+	Data    string           `json:"data"`
+}
+
+type SendMessageRequest struct {
+	ChatId      int                   `json:"chat_id"`
+	Text        string                `json:"text"`
+	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+}
+
+type InlineKeyboardMarkup struct {
+	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`
+}
+type InlineKeyboardButton struct {
+	Text         string `json:"text"`
+	CallbackData string `json:"callback_data"`
+}
+
+type AnswerCallbackQueryRequest struct {
+	Text      string `json:"text,omitempty"`
+	ShowAlert bool   `json:"show_alert,omitempty"`
 }

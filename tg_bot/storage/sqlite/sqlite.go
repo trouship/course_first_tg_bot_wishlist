@@ -184,7 +184,7 @@ func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Game, 
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ?
-		ORDER BY w.added_at DESC
+		ORDER BY g.name ASC
 	`
 
 	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
@@ -201,7 +201,7 @@ func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.G
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ? AND g.release_date <= date('now')
-		ORDER BY w.added_at DESC
+		ORDER BY g.name ASC
 	`
 
 	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
@@ -218,7 +218,7 @@ func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		WHERE w.user_id = ? AND g.release_date > date('now')
-		ORDER BY w.added_at DESC
+		ORDER BY g.name ASC
 	`
 
 	games, err := s.getGamesFromSqliteQuery(ctx, q, u.Id)
@@ -321,6 +321,7 @@ func New(path string) (*Storage, error) {
 }
 
 func (s *Storage) Init(ctx context.Context) error {
+	//TODO Add expected date in wishlist + preferred platform (nullable) if there is a platform on which it exists and there is a platform where it does not
 	q := `
 		CREATE TABLE IF NOT EXISTS user (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
