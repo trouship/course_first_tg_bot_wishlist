@@ -19,6 +19,7 @@ const (
 )
 
 type Event struct {
+	Id   string
 	Type Type
 	Text string
 	Meta interface{}

@@ -21,8 +21,8 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 	return p.searchGame(ctx, text, chatID)
 }
 
-func (p *Processor) doCallback(ctx context.Context, text string, chatID int, userName string) error {
-	log.Printf("got new callback '%s' from '%s'", text, userName)
+func (p *Processor) doCallback(ctx context.Context, callbackId string, text string, chatID int, userName string) error {
+	p.tg.AnswerCallBack(ctx, callbackId, "Игра выбрана", false)
 
 	return nil
 }

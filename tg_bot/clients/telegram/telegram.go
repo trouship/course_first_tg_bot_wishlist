@@ -20,8 +20,9 @@ type Client struct {
 }
 
 const (
-	getUpdatesMethod  = "getUpdates"
-	sendMessageMethod = "sendMessage"
+	getUpdatesMethod     = "getUpdates"
+	sendMessageMethod    = "sendMessage"
+	answerCallbackMethod = "answerCallbackQuery"
 )
 
 func New(host string, token string, timeout int) *Client {
@@ -90,6 +91,21 @@ func (c *Client) SendMessageWithKeyboard(ctx context.Context, chatId int, text s
 	}
 
 	return nil
+}
+
+func (c *Client) AnswerCallBack(ctx context.Context, callbackId string, text string, showAlert bool) error {
+	q := url.Values{}
+	q.Add("callback_query_id", callbackId)
+	q.Add("text", text)
+	q.Add("show_alert", strconv.FormatBool(showAlert))
+
+	_, err := c.doRequest(ctx, answerCallbackMethod, http.MethodPost, q)
+	if err != nil {
+		return e.Wrap("can't answer callback", err)
+	}
+
+	return nil
+
 }
 
 func (c *Client) doRequest(ctx context.Context, method string, httpMethod string, q url.Values) (data []byte, err error) {

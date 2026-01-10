@@ -28,6 +28,7 @@ type From struct {
 //Inline
 
 type CallbackQuery struct {
+	Id      string           `json:"id"`
 	From    From             `json:"from"`
 	Message *IncomingMessage `json:"message"`
 	Data    string           `json:"data"`
@@ -39,9 +40,4 @@ type InlineKeyboardMarkup struct {
 type InlineKeyboardButton struct {
 	Text         string `json:"text"`
 	CallbackData string `json:"callback_data"`
-}
-
-type AnswerCallbackQueryRequest struct {
-	Text      string `json:"text,omitempty"`
-	ShowAlert bool   `json:"show_alert,omitempty"`
 }

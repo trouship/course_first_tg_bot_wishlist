@@ -75,7 +75,7 @@ func (p *Processor) processCallbackQuery(ctx context.Context, event events.Event
 		return e.Wrap("can't process callback query", err)
 	}
 
-	if err := p.doCallback(ctx, event.Text, meta.ChatId, meta.UserName); err != nil {
+	if err := p.doCallback(ctx, event.Id, event.Text, meta.ChatId, meta.UserName); err != nil {
 		return e.Wrap("can't process callback query", err)
 	}
 
@@ -116,6 +116,7 @@ func event(upd telegram.Update) events.Event {
 	updType := fetchType(upd)
 
 	res := events.Event{
+		Id:   fetchId(upd),
 		Type: updType,
 		Text: fetchText(upd),
 	}
@@ -136,6 +137,14 @@ func event(upd telegram.Update) events.Event {
 	}
 
 	return res
+}
+
+func fetchId(upd telegram.Update) string {
+	if upd.CallbackQuery == nil {
+		return ""
+	}
+
+	return upd.CallbackQuery.Id
 }
 
 func fetchText(upd telegram.Update) string {
