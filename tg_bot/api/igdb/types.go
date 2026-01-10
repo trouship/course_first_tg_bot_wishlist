@@ -16,7 +16,6 @@ type Game struct {
 }
 
 type ReleaseDate struct {
-	Id       int      `json:"id"`
 	Date     UnixTime `json:"date"`
 	Platform Platform `json:"platform"`
 }

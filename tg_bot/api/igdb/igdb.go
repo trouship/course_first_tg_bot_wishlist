@@ -99,7 +99,7 @@ func (f *Finder) FindGameById(ctx context.Context, gameId int) (res *api.Game, e
 }
 
 func game(response Game) *api.Game {
-	res := &api.Game{ // ✅ Инициализируем указатель сразу
+	res := &api.Game{
 		Id:           response.Id,
 		Name:         response.Name,
 		URL:          response.URL,
@@ -115,8 +115,9 @@ func game(response Game) *api.Game {
 
 func releaseDate(date ReleaseDate) api.PlatformDate {
 	return api.PlatformDate{
-		Platform: date.Platform.Abbreviation,
-		Date:     date.Date.Time,
+		PlatformId: date.Platform.Id,
+		Platform:   date.Platform.Abbreviation,
+		Date:       date.Date.Time,
 	}
 }
 
