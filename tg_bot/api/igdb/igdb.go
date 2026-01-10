@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"tg_game_wishlist/api"
 	"tg_game_wishlist/lib/e"
@@ -23,8 +24,9 @@ type Finder struct {
 }
 
 const (
-	gamesMethod = "v4/games"
-	gamesParam  = "; fields name,url,release_dates.date,release_dates.platform.abbreviation; where version_parent = null & game_type = 0; limit 50;"
+	gamesMethod    = "v4/games"
+	gamesListParam = "search \"?\"; fields id,name; where version_parent = null & game_type = 0; limit 50;"
+	gameParam      = "fields id,name,url,release_dates.date,release_dates.platform.abbreviation; where id = ?;"
 )
 
 func New(host, clientId, tokenType, token string) *Finder {
@@ -43,9 +45,9 @@ func newAuthorization(tokenType, token string) string {
 }
 
 func (f *Finder) Find(ctx context.Context, name string) (res []api.SearchResult, err error) {
-	defer func() { err = e.WrapIfNil("can't find game", err) }()
+	defer func() { err = e.WrapIfNil("can't find game list", err) }()
 
-	reqBody := "search \"" + name + "\"" + gamesParam
+	reqBody := strings.ReplaceAll(gamesListParam, "?", name)
 	log.Print(reqBody)
 
 	data, err := f.doRequest(ctx, gamesMethod, nil, reqBody)
@@ -70,10 +72,41 @@ func (f *Finder) Find(ctx context.Context, name string) (res []api.SearchResult,
 
 func searchResult(game Game) api.SearchResult {
 	var res api.SearchResult
-	res.URL = game.URL
+	res.Id = game.Id
 	res.Name = game.Name
-	res.ReleaseDates = make([]api.PlatformDate, 0, len(game.ReleaseDates))
-	for _, rDate := range game.ReleaseDates {
+
+	return res
+}
+
+func (f *Finder) FindGameById(ctx context.Context, gameId int) (res *api.Game, err error) {
+	defer func() { err = e.WrapIfNil("can't find one game data", err) }()
+
+	reqBody := strings.ReplaceAll(gameParam, "?", strconv.Itoa(gameId))
+	log.Print(reqBody)
+
+	data, err := f.doRequest(ctx, gamesMethod, nil, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []Game
+
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, err
+	}
+
+	return game(response[0]), nil
+}
+
+func game(response Game) *api.Game {
+	res := &api.Game{ // ✅ Инициализируем указатель сразу
+		Id:           response.Id,
+		Name:         response.Name,
+		URL:          response.URL,
+		ReleaseDates: make([]api.PlatformDate, 0, len(response.ReleaseDates)),
+	}
+
+	for _, rDate := range response.ReleaseDates {
 		res.ReleaseDates = append(res.ReleaseDates, releaseDate(rDate))
 	}
 
