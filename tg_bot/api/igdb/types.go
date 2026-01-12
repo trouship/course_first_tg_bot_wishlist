@@ -9,10 +9,11 @@ import (
 type SearchResponse []Game
 
 type Game struct {
-	Id           int           `json:"id"`
-	Name         string        `json:"name"`
-	URL          string        `json:"url"`
-	ReleaseDates []ReleaseDate `json:"release_dates"`
+	Id               int           `json:"id"`
+	Name             string        `json:"name"`
+	URL              string        `json:"url"`
+	FirstReleaseDate UnixTime      `json:"first_release_date,omitempty"`
+	ReleaseDates     []ReleaseDate `json:"release_dates"`
 }
 
 type ReleaseDate struct {

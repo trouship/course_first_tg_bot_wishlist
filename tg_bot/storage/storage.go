@@ -7,6 +7,7 @@ import (
 
 type Storage interface {
 	Add(ctx context.Context, w *Wishlist) error
+	IsExists(ctx context.Context, w *Wishlist) (bool, error)
 	GetUserByName(ctx context.Context, userName string) (User, error)
 	GetAll(ctx context.Context, u *User) ([]Game, error)
 	GetReleased(ctx context.Context, u *User) ([]Game, error)
@@ -18,8 +19,8 @@ type Storage interface {
 
 type Wishlist struct {
 	Id         int
-	User       User
-	Game       Game
+	User       *User
+	Game       *Game
 	AddedAt    time.Time
 	NotifiedAt time.Time
 }
@@ -28,9 +29,9 @@ type Source int
 
 const (
 	Steam = iota
-	igdb
-	rawg
-	manual
+	Igdb
+	Rawg
+	Manual
 )
 
 type Game struct {

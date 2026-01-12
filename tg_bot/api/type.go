@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"tg_game_wishlist/storage"
 	"time"
 )
 
@@ -11,8 +12,9 @@ type Finder interface {
 }
 
 type SearchResult struct {
-	Id   int
-	Name string
+	Id               int
+	Name             string
+	FirstReleaseDate time.Time
 }
 
 type Game struct {
@@ -20,10 +22,15 @@ type Game struct {
 	Name         string
 	URL          string
 	ReleaseDates []PlatformDate
+	Source       storage.Source
 }
 
 type PlatformDate struct {
-	PlatformId int
-	Platform   string
-	Date       time.Time
+	Platform Platform
+	Date     time.Time
+}
+
+type Platform struct {
+	Id   int
+	Name string
 }

@@ -14,6 +14,11 @@ type Storage struct {
 	db *sql.DB
 }
 
+func (s *Storage) IsExists(ctx context.Context, w *storage.Wishlist) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *Storage) GetUserByName(ctx context.Context, userName string) (storage.User, error) {
 	//TODO implement me
 	panic("implement me")
@@ -93,7 +98,7 @@ func (s *Storage) getOrCreateUser(ctx context.Context, userName string) (int, er
 	return userId, nil
 }
 
-func (s *Storage) gameId(ctx context.Context, g storage.Game) (int, error) {
+func (s *Storage) gameId(ctx context.Context, g *storage.Game) (int, error) {
 	q := `SELECT id 
 		  FROM game 
 		  WHERE name = ? AND external_url = ? AND source = ?`
@@ -110,7 +115,7 @@ func (s *Storage) gameId(ctx context.Context, g storage.Game) (int, error) {
 	return id, nil
 }
 
-func (s *Storage) addGame(ctx context.Context, g storage.Game) (int, error) {
+func (s *Storage) addGame(ctx context.Context, g *storage.Game) (int, error) {
 	q := `INSERT INTO game (name, source, external_url, release_date) VALUES(?,?,?,?)`
 
 	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalURL, g.ReleaseDate)
@@ -126,7 +131,7 @@ func (s *Storage) addGame(ctx context.Context, g storage.Game) (int, error) {
 	return int(gameId), nil
 }
 
-func (s *Storage) getOrCreateGame(ctx context.Context, g storage.Game) (int, error) {
+func (s *Storage) getOrCreateGame(ctx context.Context, g *storage.Game) (int, error) {
 	gameId, err := s.gameId(ctx, g)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return -1, err
@@ -261,11 +266,11 @@ func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 		var w storage.Wishlist
 		var notifiedAt sql.NullTime
 
-		var g storage.Game
+		var g *storage.Game
 		var releaseDate sql.NullTime
 		var externalURL sql.NullString
 
-		var u storage.User
+		var u *storage.User
 
 		err = rows.Scan(&w.Id, &w.AddedAt, notifiedAt, &g.Id, &externalURL, &g.Source, &g.Name, &releaseDate, &u.Id, &u.Name)
 		if err != nil {

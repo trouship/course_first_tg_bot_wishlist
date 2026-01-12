@@ -11,6 +11,7 @@ import (
 	"strings"
 	"tg_game_wishlist/api"
 	"tg_game_wishlist/lib/e"
+	"tg_game_wishlist/storage"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -25,7 +26,7 @@ type Finder struct {
 
 const (
 	gamesMethod    = "v4/games"
-	gamesListParam = "search \"?\"; fields id,name; where version_parent = null & game_type = 0; limit 50;"
+	gamesListParam = "search \"?\"; fields id,name,first_release_date; where version_parent = null & game_type = 0; limit 50;"
 	gameParam      = "fields id,name,url,release_dates.date,release_dates.platform.abbreviation; where id = ?;"
 )
 
@@ -74,6 +75,7 @@ func searchResult(game Game) api.SearchResult {
 	var res api.SearchResult
 	res.Id = game.Id
 	res.Name = game.Name
+	res.FirstReleaseDate = game.FirstReleaseDate.Time
 
 	return res
 }
@@ -104,6 +106,7 @@ func game(response Game) *api.Game {
 		Name:         response.Name,
 		URL:          response.URL,
 		ReleaseDates: make([]api.PlatformDate, 0, len(response.ReleaseDates)),
+		Source:       storage.Igdb,
 	}
 
 	for _, rDate := range response.ReleaseDates {
@@ -115,9 +118,15 @@ func game(response Game) *api.Game {
 
 func releaseDate(date ReleaseDate) api.PlatformDate {
 	return api.PlatformDate{
-		PlatformId: date.Platform.Id,
-		Platform:   date.Platform.Abbreviation,
-		Date:       date.Date.Time,
+		Platform: platform(date),
+		Date:     date.Date.Time,
+	}
+}
+
+func platform(date ReleaseDate) api.Platform {
+	return api.Platform{
+		Id:   date.Platform.Id,
+		Name: date.Platform.Abbreviation,
 	}
 }
 
