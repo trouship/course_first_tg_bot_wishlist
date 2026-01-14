@@ -18,11 +18,12 @@ type Storage interface {
 }
 
 type Wishlist struct {
-	Id         int
-	User       *User
-	Game       *Game
-	AddedAt    time.Time
-	NotifiedAt time.Time
+	Id                  int
+	User                *User
+	Game                *Game
+	ExpectedReleaseDate time.Time
+	AddedAt             time.Time
+	NotifiedAt          time.Time
 }
 
 type Source int
@@ -37,7 +38,6 @@ const (
 type Game struct {
 	Id          int
 	Name        string
-	ReleaseDate time.Time
 	Source      Source
 	ExternalURL string
 }

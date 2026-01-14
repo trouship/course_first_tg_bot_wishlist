@@ -14,14 +14,60 @@ type Storage struct {
 	db *sql.DB
 }
 
-func (s *Storage) IsExists(ctx context.Context, w *storage.Wishlist) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *Storage) IsExists(ctx context.Context, w *storage.Wishlist) (res bool, err error) {
+	defer func() { err = e.WrapIfNil("can't check if exists wishlist", err) }()
+
+	userId, err := s.userId(ctx, w.User.Name)
+	if err != nil {
+		return false, err
+	}
+
+	gameId, err := s.gameId(ctx, w.Game)
+	if err != nil {
+		return false, err
+	}
+
+	q := `
+		SELECT COUNT(*) 
+		FROM wishlist 
+		WHERE user_id = ? AND game_id = ?
+	`
+
+	var count int
+
+	err = s.db.QueryRowContext(ctx, q, userId, gameId).Scan(&count)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
-func (s *Storage) GetUserByName(ctx context.Context, userName string) (storage.User, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *Storage) GetUserByName(ctx context.Context, userName string) (*storage.User, error) {
+	q := `
+		SELECT id, name
+		FROM user 
+		WHERE name = ?
+	`
+
+	var id int
+	var name string
+
+	err := s.db.QueryRowContext(ctx, q, userName).Scan(&id, &name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, e.Wrap("user "+userName+" doesn't exist", err)
+		}
+		return nil, err
+	}
+
+	return &storage.User{
+		Id:   id,
+		Name: name,
+	}, nil
 }
 
 func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
@@ -40,9 +86,9 @@ func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
 	}
 	w.Game.Id = gameId
 
-	q := `INSERT INTO wishlist (game_id, user_id) VALUES (?,?)`
+	q := `INSERT INTO wishlist (game_id, user_id, expected_release_date) VALUES (?,?,?)`
 
-	_, err = s.db.ExecContext(ctx, q, gameId, userId)
+	_, err = s.db.ExecContext(ctx, q, gameId, userId, w.ExpectedReleaseDate)
 	if err != nil {
 		return err
 	}
@@ -116,9 +162,9 @@ func (s *Storage) gameId(ctx context.Context, g *storage.Game) (int, error) {
 }
 
 func (s *Storage) addGame(ctx context.Context, g *storage.Game) (int, error) {
-	q := `INSERT INTO game (name, source, external_url, release_date) VALUES(?,?,?,?)`
+	q := `INSERT INTO game (name, source, external_url) VALUES(?,?,?,?)`
 
-	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalURL, g.ReleaseDate)
+	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalURL)
 	if err != nil {
 		return -1, e.Wrap("can't add game", err)
 	}
@@ -338,7 +384,6 @@ func (s *Storage) Init(ctx context.Context) error {
 			external_url VARCHAR(500) NULL,
 			source VARCHAR(255) NOT NULL,
 			name VARCHAR(255) NOT NULL,
-			release_date DATETIME NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			
 			UNIQUE(source, external_url)
@@ -348,7 +393,8 @@ func (s *Storage) Init(ctx context.Context) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			game_id INTEGER NOT NULL,
-			added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			expected_release_date DATETIME NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			notified_at DATETIME NULL,
 			
 			FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,

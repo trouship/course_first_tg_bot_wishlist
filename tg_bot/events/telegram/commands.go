@@ -130,7 +130,6 @@ func (p *Processor) groupGamePlatformsByDate(releaseDates []api.PlatformDate) ma
 
 func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *api.Game, platformDate *api.PlatformDate, chatID int, userName string) (err error) {
 	defer func() { err = e.WrapIfNil("can't add game to storage", err) }()
-	return nil
 
 	user := &storage.User{
 		Name: userName,
