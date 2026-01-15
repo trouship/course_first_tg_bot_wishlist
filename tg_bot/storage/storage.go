@@ -13,7 +13,7 @@ type Storage interface {
 	GetAll(ctx context.Context, u *User) ([]Wishlist, error)
 	GetReleased(ctx context.Context, u *User) ([]Wishlist, error)
 	GetUnreleased(ctx context.Context, u *User) ([]Wishlist, error)
-	Remove(ctx context.Context, w *Wishlist) error
+	Remove(ctx context.Context, wishListId int) error
 	GetToNotify(ctx context.Context) ([]Wishlist, error)
 	Notify(ctx context.Context, w *Wishlist) error
 }

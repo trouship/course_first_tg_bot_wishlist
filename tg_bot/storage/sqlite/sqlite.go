@@ -304,10 +304,10 @@ func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage
 	return wishlist, nil
 }
 
-func (s *Storage) Remove(ctx context.Context, w *storage.Wishlist) error {
+func (s *Storage) Remove(ctx context.Context, wishlistId int) error {
 	q := `DELETE FROM wishlist WHERE id = ?`
 
-	_, err := s.db.ExecContext(ctx, q, w.Id)
+	_, err := s.db.ExecContext(ctx, q, wishlistId)
 	if err != nil {
 		return e.Wrap("can't remove wishlist", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 	"tg_game_wishlist/api"
@@ -19,6 +20,12 @@ const (
 	StartCmd  = "/start"
 	ListCmd   = "/list"
 	RemoveCmd = "/remove"
+)
+
+const (
+	SelectCallback = "select"
+	AddCallback    = "add"
+	RemoveCallback = "remove"
 )
 
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
@@ -151,43 +158,101 @@ func (p *Processor) doCallback(ctx context.Context, callbackId string, text stri
 
 	parts := strings.Split(text, ":")
 
-	gameId, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return err
-	}
-
-	game, err := p.gameById(ctx, gameId)
-	if err != nil {
-		return err
-	}
-
 	switch parts[0] {
-	case "select":
-		return p.selectGameCallback(ctx, callbackId, game, chatID, userName)
-	case "add":
-
+	case SelectCallback:
+		return p.selectGameCallback(ctx, callbackId, text, chatID, userName)
+	case AddCallback:
+		return p.addGameCallback(ctx, callbackId, text, chatID, userName)
+	case RemoveCallback:
+		return p.removeWishlistCallback(ctx, callbackId, text, chatID)
 	}
 
 	return nil
 }
 
-func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, searchGame *api.Game, chatID int, userName string) (err error) {
-	defer func() { err = e.WrapIfNil("can't process select game callback", err) }()
+func (p *Processor) removeWishlistCallback(ctx context.Context, callbackId string, text string, chatID int) (err error) {
+	defer func() {
+		err = e.WrapIfNil("can't process remove wishlist callback", err)
+		p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	}()
+	parts := strings.Split(text, ":")
+
+	wishlistId, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return err
+	}
+
+	if err = p.storage.Remove(ctx, wishlistId); err != nil {
+		return err
+	}
+
+	return p.tg.SendMessage(ctx, chatID, msgRemoved)
+}
+
+func (p *Processor) addGameCallback(ctx context.Context, callbackId string, text string, chatID int, userName string) (err error) {
+	defer func() {
+		err = e.WrapIfNil("can't process add game callback", err)
+		p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	}()
+	parts := strings.Split(text, ":")
+
+	gameId, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return err
+	}
+
+	searchGame, err := p.gameById(ctx, gameId)
+	if err != nil {
+		return err
+	}
+
+	//Если не указана платформа
+	if len(parts) < 3 {
+		return p.addGame(ctx, searchGame, nil, chatID, userName)
+	}
+
+	platformIds := strings.Split(parts[2], ",")
+	for _, rd := range searchGame.ReleaseDates {
+		if slices.Contains(platformIds, strconv.Itoa(rd.Platform.Id)) {
+			return p.addGame(ctx, searchGame, &rd, chatID, userName)
+		}
+	}
+
+	return e.Wrap("platform not found", err)
+}
+
+func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, text string, chatID int, userName string) (err error) {
+	defer func() {
+		err = e.WrapIfNil("can't process select game callback", err)
+		p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	}()
+
+	parts := strings.Split(text, ":")
+
+	gameId, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return err
+	}
+
+	searchGame, err := p.gameById(ctx, gameId)
+	if err != nil {
+		return err
+	}
 
 	now := time.Now()
 
 	//Случаи когда действия от пользователя не требуются
 	if p.isPastDates(searchGame.ReleaseDates) {
 		//Случай с всеми прошедшими датами (просто добавление без даты)
-		return p.addGame(ctx, callbackId, searchGame, nil, chatID, userName)
+		return p.addGame(ctx, searchGame, nil, chatID, userName)
 	} else if p.isSameDatePlatform(searchGame.ReleaseDates) {
 		//Случай с одинаковыми датами у всех платформ
 		if len(searchGame.ReleaseDates) > 0 && searchGame.ReleaseDates[0].Date.After(now) {
 			//Если дата в будущем, то добавляем с датой
-			return p.addGame(ctx, callbackId, searchGame, &searchGame.ReleaseDates[0], chatID, userName)
+			return p.addGame(ctx, searchGame, &searchGame.ReleaseDates[0], chatID, userName)
 		} else {
 			//Если даты нет или она в прошлом, то добавление без даты
-			return p.addGame(ctx, callbackId, searchGame, nil, chatID, userName)
+			return p.addGame(ctx, searchGame, nil, chatID, userName)
 		}
 	}
 
@@ -232,7 +297,7 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, s
 		return err
 	}
 
-	return p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	return nil
 }
 
 func (p *Processor) groupGamePlatformsByDate(releaseDates []api.PlatformDate) map[time.Time][]api.Platform {
@@ -250,8 +315,10 @@ func (p *Processor) groupGamePlatformsByDate(releaseDates []api.PlatformDate) ma
 	return res
 }
 
-func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *api.Game, platformDate *api.PlatformDate, chatID int, userName string) (err error) {
-	defer func() { err = e.WrapIfNil("can't add game to storage", err) }()
+func (p *Processor) addGame(ctx context.Context, searchGame *api.Game, platformDate *api.PlatformDate, chatID int, userName string) (err error) {
+	defer func() {
+		err = e.WrapIfNil("can't add game to storage", err)
+	}()
 
 	user := &storage.User{
 		Name: userName,
@@ -283,11 +350,7 @@ func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *
 		return err
 	}
 
-	if err := p.tg.SendMessage(ctx, chatID, msgSaved); err != nil {
-		return err
-	}
-
-	return p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	return p.tg.SendMessage(ctx, chatID, msgSaved)
 }
 
 func (p *Processor) isSameDatePlatform(platformDates []api.PlatformDate) bool {
