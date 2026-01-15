@@ -65,6 +65,7 @@ func (c *Client) SendMessage(ctx context.Context, chatId int, text string) error
 	q := url.Values{}
 	q.Add("chat_id", strconv.Itoa(chatId))
 	q.Add("text", text)
+	q.Add("link_preview_options", "{\"is_disabled\": true}")
 
 	_, err := c.doRequest(ctx, sendMessageMethod, http.MethodGet, q)
 	if err != nil {
@@ -83,6 +84,7 @@ func (c *Client) SendMessageWithKeyboard(ctx context.Context, chatId int, text s
 	q := url.Values{}
 	q.Add("chat_id", strconv.Itoa(chatId))
 	q.Add("text", text)
+	q.Add("link_preview_options", "{\"is_disabled\": true}")
 	q.Add("reply_markup", string(jsonKeyboard))
 
 	_, err = c.doRequest(ctx, sendMessageMethod, http.MethodPost, q)

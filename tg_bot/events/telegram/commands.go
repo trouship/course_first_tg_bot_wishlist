@@ -103,13 +103,12 @@ func (p *Processor) sendGameList(ctx context.Context, chatId int, userName strin
 	builder.WriteString(msgGameList)
 
 	for _, w := range wishlist {
-		builder.WriteString(fmt.Sprintf("\n\n%s\n", w.Game.Name))
+		builder.WriteString(fmt.Sprintf("\n\n🎯 %s\n", w.Game.Name))
 		if !w.ExpectedReleaseDate.IsZero() {
-			builder.WriteString(fmt.Sprintf("Дата релиза: %s\n", w.ExpectedReleaseDate.Format("02.01.2006")))
+			builder.WriteString(fmt.Sprintf("🔜 Дата релиза: %s\n", w.ExpectedReleaseDate.Format("02.01.2006")))
 		}
-		builder.WriteString(w.Game.ExternalURL)
+		builder.WriteString(fmt.Sprintf("🔗 %s", w.Game.ExternalURL))
 	}
-	log.Print(builder.String())
 
 	return p.tg.SendMessage(ctx, chatId, builder.String())
 }
