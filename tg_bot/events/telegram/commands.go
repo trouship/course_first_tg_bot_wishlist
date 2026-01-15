@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	HelpCmd  = "/help"
-	StartCmd = "/start"
-	ListCmd  = "/list"
+	HelpCmd   = "/help"
+	StartCmd  = "/start"
+	ListCmd   = "/list"
+	RemoveCmd = "/remove"
 )
 
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
@@ -32,9 +33,44 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 		return p.sendHello(ctx, chatID)
 	case ListCmd:
 		return p.sendGameList(ctx, chatID, userName)
+	case RemoveCmd:
+		return p.sendRemoveList(ctx, chatID, userName)
 	default:
 		return p.searchGameList(ctx, text, chatID)
 	}
+}
+
+func (p *Processor) sendRemoveList(ctx context.Context, chatId int, userName string) (err error) {
+	defer func() { err = e.WrapIfNil("can't remove game", err) }()
+
+	user, err := p.storage.GetUserByName(ctx, userName)
+	if err != nil && !errors.Is(err, storage.ErrNoUser) {
+		return err
+	}
+	if errors.Is(err, storage.ErrNoUser) {
+		return p.tg.SendMessage(ctx, chatId, msgNoWishlist)
+	}
+
+	wishlist, err := p.storage.GetAll(ctx, user)
+	if err != nil && !errors.Is(err, storage.ErrNoWishlist) {
+		return err
+	}
+	if errors.Is(err, storage.ErrNoWishlist) {
+		return p.tg.SendMessage(ctx, chatId, msgNoWishlist)
+	}
+
+	var buttons [][]telegram.InlineKeyboardButton
+
+	for _, w := range wishlist {
+		button := telegram.InlineKeyboardButton{
+			Text:         fmt.Sprintf("💀%s", w.Game.Name),
+			CallbackData: fmt.Sprintf("remove:%d", w.Id),
+		}
+
+		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
+	}
+
+	return p.tg.SendMessageWithKeyboard(ctx, chatId, msgRemoveGameChoice, &telegram.InlineKeyboardMarkup{InlineKeyboard: buttons})
 }
 
 func (p *Processor) sendGameList(ctx context.Context, chatId int, userName string) (err error) {
