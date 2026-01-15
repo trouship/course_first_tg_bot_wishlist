@@ -17,6 +17,7 @@ import (
 const (
 	HelpCmd  = "/help"
 	StartCmd = "/start"
+	ListCmd  = "/list"
 )
 
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
@@ -29,9 +30,45 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 		return p.sendHelp(ctx, chatID)
 	case StartCmd:
 		return p.sendHello(ctx, chatID)
+	case ListCmd:
+		return p.sendGameList(ctx, chatID, userName)
 	default:
 		return p.searchGameList(ctx, text, chatID)
 	}
+}
+
+func (p *Processor) sendGameList(ctx context.Context, chatId int, userName string) (err error) {
+	defer func() { err = e.WrapIfNil("can't send game list", err) }()
+
+	user, err := p.storage.GetUserByName(ctx, userName)
+	if err != nil && !errors.Is(err, storage.ErrNoUser) {
+		return err
+	}
+	if errors.Is(err, storage.ErrNoUser) {
+		return p.tg.SendMessage(ctx, chatId, msgNoWishlist)
+	}
+
+	wishlist, err := p.storage.GetAll(ctx, user)
+	if err != nil && !errors.Is(err, storage.ErrNoWishlist) {
+		return err
+	}
+	if errors.Is(err, storage.ErrNoWishlist) {
+		return p.tg.SendMessage(ctx, chatId, msgNoWishlist)
+	}
+
+	var builder strings.Builder
+	builder.WriteString(msgGameList)
+
+	for _, w := range wishlist {
+		builder.WriteString(fmt.Sprintf("\n\n%s\n", w.Game.Name))
+		if !w.ExpectedReleaseDate.IsZero() {
+			builder.WriteString(fmt.Sprintf("Дата релиза: %s\n", w.ExpectedReleaseDate.Format("02.01.2006")))
+		}
+		builder.WriteString(w.Game.ExternalURL)
+	}
+	log.Print(builder.String())
+
+	return p.tg.SendMessage(ctx, chatId, builder.String())
 }
 
 func (p *Processor) searchGameList(ctx context.Context, text string, chatID int) (err error) {
