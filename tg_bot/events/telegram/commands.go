@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	SearchCmd = "/search"
+	HelpCmd  = "/help"
+	StartCmd = "/start"
 )
 
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
@@ -23,7 +24,53 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 
 	log.Printf("got new command '%s' from '%s'", text, userName)
 
-	return p.searchGameList(ctx, text, chatID)
+	switch text {
+	case HelpCmd:
+		return p.sendHelp(ctx, chatID)
+	case StartCmd:
+		return p.sendHello(ctx, chatID)
+	default:
+		return p.searchGameList(ctx, text, chatID)
+	}
+}
+
+func (p *Processor) searchGameList(ctx context.Context, text string, chatID int) (err error) {
+	defer func() { err = e.WrapIfNil("can't search game", err) }()
+
+	var res []api.SearchResult
+	res, err = p.finder.Find(ctx, text)
+	if err != nil && !errors.Is(err, api.ErrNoSearchResults) {
+		return err
+	}
+	if errors.Is(err, api.ErrNoSearchResults) {
+		return p.tg.SendMessage(ctx, chatID, msgNoSearchResults)
+	}
+
+	var buttons [][]telegram.InlineKeyboardButton
+
+	for _, game := range res {
+		buttonText := fmt.Sprintf("🎮 %s", game.Name)
+		if !game.FirstReleaseDate.IsZero() {
+			buttonText += " (" + strconv.Itoa(game.FirstReleaseDate.Year()) + ")"
+		}
+		button := telegram.InlineKeyboardButton{
+			Text:         buttonText,
+			CallbackData: fmt.Sprintf("select:%d", game.Id),
+		}
+		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
+	}
+
+	return p.tg.SendMessageWithKeyboard(ctx, chatID, msgGameListChoice, &telegram.InlineKeyboardMarkup{
+		InlineKeyboard: buttons,
+	})
+}
+
+func (p *Processor) sendHelp(ctx context.Context, chatId int) error {
+	return p.tg.SendMessage(ctx, chatId, msgHelp)
+}
+
+func (p *Processor) sendHello(ctx context.Context, chatId int) error {
+	return p.tg.SendMessage(ctx, chatId, msgHello)
 }
 
 func (p *Processor) doCallback(ctx context.Context, callbackId string, text string, chatID int, userName string) (err error) {
@@ -55,7 +102,6 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, s
 	defer func() { err = e.WrapIfNil("can't process select game callback", err) }()
 
 	now := time.Now()
-	p.tg.AnswerCallBack(ctx, callbackId, "test", false)
 
 	//Случаи когда действия от пользователя не требуются
 	if p.isPastDates(searchGame.ReleaseDates) {
@@ -85,16 +131,18 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, s
 			continue
 		}
 
+		var ids []string
 		var names []string
 
 		for _, platform := range platforms {
+			ids = append(ids, strconv.Itoa(platform.Id))
 			names = append(names, platform.Name)
 		}
 		buttonText := strings.Join(names, " | ")
-		//TODO добавить перечисление нескольких платформ через запятую
+		buttonCallbackIds := strings.Join(ids, ",")
 		button := telegram.InlineKeyboardButton{
-			Text:         fmt.Sprintf("%s\n 📅 %s", buttonText, date.Format("02.01.2006")),
-			CallbackData: fmt.Sprintf("add:%d:%s", searchGame.Id, names),
+			Text:         fmt.Sprintf("%s 📅 %s", buttonText, date.Format("02.01.2006")),
+			CallbackData: fmt.Sprintf("add:%d:%s", searchGame.Id, buttonCallbackIds),
 		}
 		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
 	}
@@ -107,7 +155,7 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, s
 		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
 	}
 
-	if err = p.tg.SendMessageWithKeyboard(ctx, chatID, "Платформы:", &telegram.InlineKeyboardMarkup{InlineKeyboard: buttons}); err != nil {
+	if err = p.tg.SendMessageWithKeyboard(ctx, chatID, msgPlatformDateChoice, &telegram.InlineKeyboardMarkup{InlineKeyboard: buttons}); err != nil {
 		return err
 	}
 
@@ -155,16 +203,14 @@ func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *
 		return err
 	}
 	if isExists {
-		//TODO change message
-		return p.tg.SendMessage(ctx, chatID, "exists")
+		return p.tg.SendMessage(ctx, chatID, msgAlreadyExists)
 	}
 
 	if err := p.storage.Add(ctx, wishlist); err != nil {
 		return err
 	}
 
-	//TODO change message
-	if err := p.tg.SendMessage(ctx, chatID, "Saved!"); err != nil {
+	if err := p.tg.SendMessage(ctx, chatID, msgSaved); err != nil {
 		return err
 	}
 
@@ -207,36 +253,4 @@ func (p *Processor) gameById(ctx context.Context, gameId int) (game *api.Game, e
 	}
 
 	return game, nil
-}
-
-func (p *Processor) searchGameList(ctx context.Context, text string, chatID int) (err error) {
-	defer func() { err = e.WrapIfNil("can't search game", err) }()
-
-	var res []api.SearchResult
-	res, err = p.finder.Find(ctx, text)
-	if err != nil && !errors.Is(err, api.ErrNoSearchResults) {
-		return err
-	}
-	if errors.Is(err, api.ErrNoSearchResults) {
-		p.tg.SendMessage(ctx, chatID, "Не найдены результаты поиска по запросу: "+text)
-		return nil
-	}
-
-	var buttons [][]telegram.InlineKeyboardButton
-
-	for _, game := range res {
-		buttonText := fmt.Sprintf("🎮 %s", game.Name)
-		if !game.FirstReleaseDate.IsZero() {
-			buttonText += " (" + strconv.Itoa(game.FirstReleaseDate.Year()) + ")"
-		}
-		button := telegram.InlineKeyboardButton{
-			Text:         buttonText,
-			CallbackData: fmt.Sprintf("select:%d", game.Id),
-		}
-		buttons = append(buttons, []telegram.InlineKeyboardButton{button})
-	}
-
-	return p.tg.SendMessageWithKeyboard(ctx, chatID, "Выберите игру: ", &telegram.InlineKeyboardMarkup{
-		InlineKeyboard: buttons,
-	})
 }
