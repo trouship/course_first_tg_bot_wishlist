@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -140,13 +141,13 @@ func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *
 		Source:      searchGame.Source,
 		ExternalURL: searchGame.URL,
 	}
-	if platformDate != nil {
-		game.ReleaseDate = platformDate.Date
-	}
 
 	wishlist := &storage.Wishlist{
 		User: user,
 		Game: game,
+	}
+	if platformDate != nil {
+		wishlist.ExpectedReleaseDate = platformDate.Date
 	}
 
 	isExists, err := p.storage.IsExists(ctx, wishlist)
@@ -163,7 +164,7 @@ func (p *Processor) addGame(ctx context.Context, callbackId string, searchGame *
 	}
 
 	//TODO change message
-	if err := p.tg.SendMessage(ctx, chatID, "success"); err != nil {
+	if err := p.tg.SendMessage(ctx, chatID, "Saved!"); err != nil {
 		return err
 	}
 
@@ -213,8 +214,12 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 
 	var res []api.SearchResult
 	res, err = p.finder.Find(ctx, text)
-	if err != nil {
+	if err != nil && !errors.Is(err, api.ErrNoSearchResults) {
 		return err
+	}
+	if errors.Is(err, api.ErrNoSearchResults) {
+		p.tg.SendMessage(ctx, chatID, "Не найдены результаты поиска по запросу: "+text)
+		return nil
 	}
 
 	var buttons [][]telegram.InlineKeyboardButton

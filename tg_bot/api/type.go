@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"tg_game_wishlist/storage"
 	"time"
 )
@@ -10,6 +11,10 @@ type Finder interface {
 	Find(ctx context.Context, name string) ([]SearchResult, error)
 	FindGameById(ctx context.Context, gameId int) (*Game, error)
 }
+
+var (
+	ErrNoSearchResults = errors.New("search results not found")
+)
 
 type SearchResult struct {
 	Id               int

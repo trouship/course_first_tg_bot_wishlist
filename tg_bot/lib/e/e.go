@@ -3,10 +3,10 @@ package e
 import "fmt"
 
 func Wrap(mes string, err error) error {
-	return fmt.Errorf("%s: %v", mes, err)
+	return fmt.Errorf("%s: %w", mes, err)
 }
 
-func WrapIfNil( mes string, err error) error {
+func WrapIfNil(mes string, err error) error {
 	if err == nil {
 		return nil
 	}

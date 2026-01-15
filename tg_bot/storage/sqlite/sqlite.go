@@ -19,11 +19,17 @@ func (s *Storage) IsExists(ctx context.Context, w *storage.Wishlist) (res bool, 
 
 	userId, err := s.userId(ctx, w.User.Name)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
 		return false, err
 	}
 
 	gameId, err := s.gameId(ctx, w.Game)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -162,7 +168,7 @@ func (s *Storage) gameId(ctx context.Context, g *storage.Game) (int, error) {
 }
 
 func (s *Storage) addGame(ctx context.Context, g *storage.Game) (int, error) {
-	q := `INSERT INTO game (name, source, external_url) VALUES(?,?,?,?)`
+	q := `INSERT INTO game (name, source, external_url) VALUES(?,?,?)`
 
 	res, err := s.db.ExecContext(ctx, q, g.Name, g.Source, g.ExternalURL)
 	if err != nil {
@@ -212,9 +218,9 @@ func (s *Storage) getGamesFromSqliteQuery(ctx context.Context, query string, arg
 			return nil, e.Wrap("can't scan game", err)
 		}
 
-		if releaseDate.Valid {
-			g.ReleaseDate = releaseDate.Time
-		}
+		//if releaseDate.Valid {
+		//	g.ReleaseDate = releaseDate.Time
+		//}
 		if externalURL.Valid {
 			g.ExternalURL = externalURL.String
 		}
@@ -327,9 +333,9 @@ func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 			w.NotifiedAt = notifiedAt.Time
 		}
 
-		if releaseDate.Valid {
-			g.ReleaseDate = releaseDate.Time
-		}
+		//if releaseDate.Valid {
+		//	g.ReleaseDate = releaseDate.Time
+		//}
 		if externalURL.Valid {
 			g.ExternalURL = externalURL.String
 		}

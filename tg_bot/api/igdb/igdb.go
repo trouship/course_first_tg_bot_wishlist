@@ -61,6 +61,9 @@ func (f *Finder) Find(ctx context.Context, name string) (res []api.SearchResult,
 	if err := json.Unmarshal(data, &response); err != nil {
 		return nil, err
 	}
+	if len(response) == 0 {
+		return nil, api.ErrNoSearchResults
+	}
 
 	res = make([]api.SearchResult, 0, len(response))
 

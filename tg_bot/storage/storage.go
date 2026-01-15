@@ -8,7 +8,7 @@ import (
 type Storage interface {
 	Add(ctx context.Context, w *Wishlist) error
 	IsExists(ctx context.Context, w *Wishlist) (bool, error)
-	GetUserByName(ctx context.Context, userName string) (User, error)
+	GetUserByName(ctx context.Context, userName string) (*User, error)
 	GetAll(ctx context.Context, u *User) ([]Game, error)
 	GetReleased(ctx context.Context, u *User) ([]Game, error)
 	GetUnreleased(ctx context.Context, u *User) ([]Game, error)
