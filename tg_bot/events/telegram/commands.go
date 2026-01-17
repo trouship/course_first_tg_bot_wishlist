@@ -120,7 +120,7 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 		return err
 	}
 	if errors.Is(err, api.ErrNoSearchResults) {
-		return p.tg.SendMessage(ctx, chatID, msgNoSearchResults)
+		return p.sendNoSearchResults(ctx, text, chatID)
 	}
 
 	var buttons [][]telegram.InlineKeyboardButton
@@ -128,7 +128,7 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 	for _, game := range res {
 		buttonText := fmt.Sprintf("🎮 %s", game.Name)
 		if !game.FirstReleaseDate.IsZero() {
-			buttonText += " (" + strconv.Itoa(game.FirstReleaseDate.Year()) + ")"
+			buttonText += fmt.Sprintf(" (%s)", strconv.Itoa(game.FirstReleaseDate.Year()))
 		}
 		button := telegram.InlineKeyboardButton{
 			Text:         buttonText,
@@ -138,6 +138,22 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 	}
 
 	return p.tg.SendMessageWithKeyboard(ctx, chatID, msgGameListChoice, &telegram.InlineKeyboardMarkup{
+		InlineKeyboard: buttons,
+	})
+}
+
+func (p *Processor) sendNoSearchResults(ctx context.Context, text string, chatId int) (err error) {
+	defer func() { err = e.WrapIfNil("can't send no search results", err) }()
+
+	var buttons [][]telegram.InlineKeyboardButton
+
+	button := telegram.InlineKeyboardButton{
+		Text:         "Добавить игру вручную без даты",
+		CallbackData: fmt.Sprintf("add:%s", text),
+	}
+	buttons = append(buttons, []telegram.InlineKeyboardButton{button})
+
+	return p.tg.SendMessageWithKeyboard(ctx, chatId, msgNoSearchResults, &telegram.InlineKeyboardMarkup{
 		InlineKeyboard: buttons,
 	})
 }
