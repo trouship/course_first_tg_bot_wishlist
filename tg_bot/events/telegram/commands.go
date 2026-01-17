@@ -11,6 +11,7 @@ import (
 	"tg_game_wishlist/clients/telegram"
 	"tg_game_wishlist/lib/e"
 	"tg_game_wishlist/storage"
+	"time"
 )
 
 const (
@@ -20,16 +21,23 @@ const (
 	RemoveCmd = "/remove"
 )
 
-const (
-	SelectCallback = "select"
-	AddCallback    = "add"
-	RemoveCallback = "remove"
-)
-
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName string) error {
 	//text = strings.TrimSpace(text)
 
 	log.Printf("got new command '%s' from '%s'", text, userName)
+
+	state, ok := p.states[userName]
+
+	if ok && state.Step == AwaitingDateStep {
+		//Если не дата, то очищаем состояние
+		date, err := p.parseDateFromString(text)
+		if err != nil {
+			p.clearState(userName)
+		} else {
+			//Иначе добавляем с датой
+			return p.addManualGameWithDate(ctx, chatID, userName, state.GameName, date)
+		}
+	}
 
 	switch text {
 	case HelpCmd:
@@ -41,8 +49,59 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 	case RemoveCmd:
 		return p.sendRemoveList(ctx, chatID, userName)
 	default:
-		return p.searchGameList(ctx, text, chatID)
+		return p.searchGameList(ctx, text, chatID, userName)
 	}
+}
+
+func (p *Processor) parseDateFromString(strDate string) (time.Time, error) {
+	return time.Parse("02.01.2006", strDate)
+}
+
+func (p *Processor) addManualGameWithDate(ctx context.Context, chatId int, userName string, gameName string, date time.Time) (err error) {
+	defer func() { err = e.WrapIfNil("can't add manual", err) }()
+
+	return p.addManualGame(ctx, chatId, userName, gameName, date)
+}
+
+func (p *Processor) clearState(userName string) {
+	delete(p.states, userName)
+}
+
+func (p *Processor) addManualGame(ctx context.Context, chatId int, userName string, gameName string, date time.Time) (err error) {
+	defer func() { err = e.WrapIfNil("can't add manual game to storage", err) }()
+
+	user := &storage.User{
+		Name: userName,
+	}
+
+	game := &storage.Game{
+		Name:   gameName,
+		Source: storage.Manual,
+	}
+
+	wishlist := &storage.Wishlist{
+		User: user,
+		Game: game,
+	}
+	if !date.IsZero() {
+		wishlist.ExpectedReleaseDate = date
+	}
+
+	isExists, err := p.storage.IsExists(ctx, wishlist)
+	if err != nil {
+		return err
+	}
+	if isExists {
+		return p.tg.SendMessage(ctx, chatId, msgAlreadyExists)
+	}
+
+	if err := p.storage.Add(ctx, wishlist); err != nil {
+		return err
+	}
+
+	p.clearState(userName)
+
+	return p.tg.SendMessage(ctx, chatId, msgSaved)
 }
 
 func (p *Processor) sendRemoveList(ctx context.Context, chatId int, userName string) (err error) {
@@ -101,17 +160,19 @@ func (p *Processor) sendGameList(ctx context.Context, chatId int, userName strin
 	builder.WriteString(msgGameList)
 
 	for _, w := range wishlist {
-		builder.WriteString(fmt.Sprintf("\n\n🎯 %s\n", w.Game.Name))
+		builder.WriteString(fmt.Sprintf("\n\n🎯 %s", w.Game.Name))
 		if !w.ExpectedReleaseDate.IsZero() {
-			builder.WriteString(fmt.Sprintf("🔜 Дата релиза: %s\n", w.ExpectedReleaseDate.Format("02.01.2006")))
+			builder.WriteString(fmt.Sprintf("\n🔜 Дата релиза: %s", w.ExpectedReleaseDate.Format("02.01.2006")))
 		}
-		builder.WriteString(fmt.Sprintf("🔗 %s", w.Game.ExternalURL))
+		if w.Game.ExternalURL != "" {
+			builder.WriteString(fmt.Sprintf("\n🔗 %s", w.Game.ExternalURL))
+		}
 	}
 
 	return p.tg.SendMessage(ctx, chatId, builder.String())
 }
 
-func (p *Processor) searchGameList(ctx context.Context, text string, chatID int) (err error) {
+func (p *Processor) searchGameList(ctx context.Context, text string, chatID int, userName string) (err error) {
 	defer func() { err = e.WrapIfNil("can't search game", err) }()
 
 	var res []api.SearchResult
@@ -120,7 +181,7 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 		return err
 	}
 	if errors.Is(err, api.ErrNoSearchResults) {
-		return p.sendNoSearchResults(ctx, text, chatID)
+		return p.sendNoSearchResults(ctx, text, chatID, userName)
 	}
 
 	var buttons [][]telegram.InlineKeyboardButton
@@ -142,14 +203,19 @@ func (p *Processor) searchGameList(ctx context.Context, text string, chatID int)
 	})
 }
 
-func (p *Processor) sendNoSearchResults(ctx context.Context, text string, chatId int) (err error) {
+func (p *Processor) sendNoSearchResults(ctx context.Context, text string, chatId int, userName string) (err error) {
 	defer func() { err = e.WrapIfNil("can't send no search results", err) }()
+
+	p.states[userName] = &UserState{
+		GameName: text,
+		Step:     AwaitingDateStep,
+	}
 
 	var buttons [][]telegram.InlineKeyboardButton
 
 	button := telegram.InlineKeyboardButton{
 		Text:         "Добавить игру вручную без даты",
-		CallbackData: fmt.Sprintf("add:%s", text),
+		CallbackData: "add_without_date",
 	}
 	buttons = append(buttons, []telegram.InlineKeyboardButton{button})
 

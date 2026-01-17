@@ -410,7 +410,7 @@ func (s *Storage) Init(ctx context.Context) error {
 			name VARCHAR(255) NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			
-			UNIQUE(source, external_url)
+			UNIQUE(source, external_url, name)
 		);
 		
 		CREATE TABLE IF NOT EXISTS wishlist (

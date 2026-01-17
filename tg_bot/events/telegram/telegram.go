@@ -10,10 +10,16 @@ import (
 	"tg_game_wishlist/storage"
 )
 
+type UserState struct {
+	GameName string
+	Step     string
+}
+
 type Processor struct {
 	tg      *telegram.Client
 	finder  api.Finder
 	storage storage.Storage
+	states  map[string]*UserState
 }
 
 type Fetcher struct {
@@ -36,6 +42,7 @@ func NewProcessor(client *telegram.Client, finder api.Finder, storage storage.St
 		tg:      client,
 		finder:  finder,
 		storage: storage,
+		states:  make(map[string]*UserState),
 	}
 }
 

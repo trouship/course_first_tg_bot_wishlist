@@ -13,6 +13,13 @@ import (
 	"time"
 )
 
+const (
+	SelectCallback = "select"
+	AddCallback    = "add"
+	RemoveCallback = "remove"
+	AddWithoutDate = "add_without_date"
+)
+
 func (p *Processor) doCallback(ctx context.Context, callbackId string, text string, chatID int, userName string) (err error) {
 	defer func() { err = e.WrapIfNil("can't process callback", err) }()
 
@@ -25,9 +32,25 @@ func (p *Processor) doCallback(ctx context.Context, callbackId string, text stri
 		return p.addGameCallback(ctx, callbackId, text, chatID, userName)
 	case RemoveCallback:
 		return p.removeWishlistCallback(ctx, callbackId, text, chatID)
+	case AddWithoutDate:
+		return p.addWithoutDateCallback(ctx, callbackId, chatID, userName)
 	}
 
 	return nil
+}
+
+func (p *Processor) addWithoutDateCallback(ctx context.Context, callbackId string, chatId int, userName string) (err error) {
+	defer func() {
+		err = e.WrapIfNil("can't add game without date callback", err)
+		p.tg.AnswerCallBack(ctx, callbackId, "", false)
+	}()
+
+	state, ok := p.states[userName]
+	if !ok {
+		return err
+	}
+
+	return p.addManualGame(ctx, chatId, userName, state.GameName, time.Time{})
 }
 
 func (p *Processor) removeWishlistCallback(ctx context.Context, callbackId string, text string, chatID int) (err error) {
@@ -68,13 +91,13 @@ func (p *Processor) addGameCallback(ctx context.Context, callbackId string, text
 
 	//Если не указана платформа
 	if len(parts) < 3 {
-		return p.addGame(ctx, searchGame, nil, chatID, userName)
+		return p.addApiGame(ctx, searchGame, nil, chatID, userName)
 	}
 
 	platformIds := strings.Split(parts[2], ",")
 	for _, rd := range searchGame.ReleaseDates {
 		if slices.Contains(platformIds, strconv.Itoa(rd.Platform.Id)) {
-			return p.addGame(ctx, searchGame, &rd, chatID, userName)
+			return p.addApiGame(ctx, searchGame, &rd, chatID, userName)
 		}
 	}
 
@@ -104,15 +127,15 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, t
 	//Случаи когда действия от пользователя не требуются
 	if p.isPastDates(searchGame.ReleaseDates) {
 		//Случай с всеми прошедшими датами (просто добавление без даты)
-		return p.addGame(ctx, searchGame, nil, chatID, userName)
+		return p.addApiGame(ctx, searchGame, nil, chatID, userName)
 	} else if p.isSameDatePlatform(searchGame.ReleaseDates) {
 		//Случай с одинаковыми датами у всех платформ
 		if len(searchGame.ReleaseDates) > 0 && searchGame.ReleaseDates[0].Date.After(now) {
 			//Если дата в будущем, то добавляем с датой
-			return p.addGame(ctx, searchGame, &searchGame.ReleaseDates[0], chatID, userName)
+			return p.addApiGame(ctx, searchGame, &searchGame.ReleaseDates[0], chatID, userName)
 		} else {
 			//Если даты нет или она в прошлом, то добавление без даты
-			return p.addGame(ctx, searchGame, nil, chatID, userName)
+			return p.addApiGame(ctx, searchGame, nil, chatID, userName)
 		}
 	}
 
@@ -175,9 +198,9 @@ func (p *Processor) groupGamePlatformsByDate(releaseDates []api.PlatformDate) ma
 	return res
 }
 
-func (p *Processor) addGame(ctx context.Context, searchGame *api.Game, platformDate *api.PlatformDate, chatID int, userName string) (err error) {
+func (p *Processor) addApiGame(ctx context.Context, searchGame *api.Game, platformDate *api.PlatformDate, chatID int, userName string) (err error) {
 	defer func() {
-		err = e.WrapIfNil("can't add game to storage", err)
+		err = e.WrapIfNil("can't add api game to storage", err)
 	}()
 
 	user := &storage.User{
