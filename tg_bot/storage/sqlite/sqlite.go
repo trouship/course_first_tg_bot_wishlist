@@ -219,7 +219,7 @@ func (s *Storage) getWishlistFromSqliteQuery(ctx context.Context, query string, 
 
 		var u storage.User
 
-		err = rows.Scan(&w.Id, &expectedReleaseDate, &notifiedDate, &createdDate, &g.Id, &g.Name, &g.Source, &externalURL, &u.Id, &u.Name)
+		err = rows.Scan(&w.Id, &expectedReleaseDate, &notifiedDate, &createdDate, &g.Id, &g.Name, &g.Source, &externalURL, &u.Id, &u.Name, &u.ChatId)
 		if err != nil {
 			return nil, e.Wrap("can't scan game", err)
 		}
@@ -252,7 +252,7 @@ func (s *Storage) getWishlistFromSqliteQuery(ctx context.Context, query string, 
 
 func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name
+		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -270,7 +270,7 @@ func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Wishli
 
 func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name
+		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -288,7 +288,7 @@ func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.W
 
 func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name
+		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -317,55 +317,16 @@ func (s *Storage) Remove(ctx context.Context, wishlistId int) error {
 
 func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.added_at, w.notified_at, g.id, g.external_url, g.source, g.name, g.release_date, u.id, u.name
-    	FROM wishlist w
+		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
+		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
-    	INNER JOIN user u ON w.user_id = u.id
-		WHERE w.notified_at NULL AND g.release_date >= date('now')
+		INNER JOIN user u on w.user_id = u.id
+		WHERE w.notified_at IS NULL AND w.expected_release_date IS NOT NULL AND date('now') >= w.expected_release_date
     `
 
-	rows, err := s.db.QueryContext(ctx, q)
+	wishlist, err := s.getWishlistFromSqliteQuery(ctx, q)
 	if err != nil {
-		return nil, e.Wrap("can't get wishlist to notify", err)
-	}
-	defer rows.Close()
-
-	var wishlist []storage.Wishlist
-
-	for rows.Next() {
-		var w storage.Wishlist
-		var notifiedAt sql.NullTime
-
-		var g *storage.Game
-		var releaseDate sql.NullTime
-		var externalURL sql.NullString
-
-		var u *storage.User
-
-		err = rows.Scan(&w.Id, &w.AddedAt, notifiedAt, &g.Id, &externalURL, &g.Source, &g.Name, &releaseDate, &u.Id, &u.Name)
-		if err != nil {
-			return nil, e.Wrap("can't scan wishlist", err)
-		}
-
-		if notifiedAt.Valid {
-			w.NotifiedAt = notifiedAt.Time
-		}
-
-		//if releaseDate.Valid {
-		//	g.ReleaseDate = releaseDate.Time
-		//}
-		if externalURL.Valid {
-			g.ExternalURL = externalURL.String
-		}
-
-		w.Game = g
-		w.User = u
-
-		wishlist = append(wishlist, w)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, e.Wrap("rows iteration error", err)
+		return nil, e.Wrap("can't get unreleased games", err)
 	}
 
 	return wishlist, nil

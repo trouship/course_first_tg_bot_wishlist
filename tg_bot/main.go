@@ -8,7 +8,9 @@ import (
 	tgClient "tg_game_wishlist/clients/telegram"
 	event_consumer "tg_game_wishlist/consumer/event-consumer"
 	"tg_game_wishlist/events/telegram"
+	tgNotifier "tg_game_wishlist/notifier/telegram"
 	"tg_game_wishlist/storage/sqlite"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -20,6 +22,7 @@ const (
 	httpTimeoutAddition = 5
 	igdbHost            = "api.igdb.com"
 	sqliteStoragePath   = "storage.db"
+	notifierDuration    = time.Second * 24
 )
 
 func init() {
@@ -55,6 +58,10 @@ func main() {
 	fetcher := telegram.NewFetcher(client)
 
 	consumer := event_consumer.New(fetcher, processor, batchSize, timeout)
+
+	//notifier
+	notifier := tgNotifier.New(s, client, notifierDuration)
+	notifier.Start(context.Background())
 
 	log.Print("service started")
 
