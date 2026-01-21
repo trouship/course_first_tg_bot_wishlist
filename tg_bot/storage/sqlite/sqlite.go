@@ -79,7 +79,7 @@ func (s *Storage) GetUserByName(ctx context.Context, userName string) (*storage.
 func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
 	defer func() { err = e.WrapIfNil("can't add wishlist", err) }()
 	//Получение или создание пользователя
-	userId, err := s.getOrCreateUser(ctx, w.User.Name)
+	userId, err := s.getOrCreateUser(ctx, w.User.Name, w.User.ChatId)
 	if err != nil {
 		return err
 	}
@@ -118,10 +118,10 @@ func (s *Storage) userId(ctx context.Context, userName string) (int, error) {
 	return id, nil
 }
 
-func (s *Storage) addUser(ctx context.Context, userName string) (int, error) {
-	q := `INSERT INTO user (name) VALUES(?)`
+func (s *Storage) addUser(ctx context.Context, userName string, chatId int) (int, error) {
+	q := `INSERT INTO user (name, chat_id) VALUES(?, ?)`
 
-	res, err := s.db.ExecContext(ctx, q, userName)
+	res, err := s.db.ExecContext(ctx, q, userName, chatId)
 	if err != nil {
 		return -1, e.Wrap("can't create user", err)
 	}
@@ -134,14 +134,14 @@ func (s *Storage) addUser(ctx context.Context, userName string) (int, error) {
 	return int(userId), nil
 }
 
-func (s *Storage) getOrCreateUser(ctx context.Context, userName string) (int, error) {
+func (s *Storage) getOrCreateUser(ctx context.Context, userName string, chatId int) (int, error) {
 	userId, err := s.userId(ctx, userName)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return -1, err
 	}
 
 	if userId < 0 {
-		userId, err = s.addUser(ctx, userName)
+		userId, err = s.addUser(ctx, userName, chatId)
 		if err != nil {
 			return -1, err
 		}
@@ -400,7 +400,10 @@ func (s *Storage) Init(ctx context.Context) error {
 	q := `
 		CREATE TABLE IF NOT EXISTS user (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name VARCHAR(255) NOT NULL
+			name VARCHAR(255) NOT NULL,
+		    chat_id INTEGER NOT NULL,
+		    
+		    UNIQUE(name, chat_id)
 		);
 		
 		CREATE TABLE IF NOT EXISTS game (

@@ -71,7 +71,8 @@ func (p *Processor) addManualGame(ctx context.Context, chatId int, userName stri
 	defer func() { err = e.WrapIfNil("can't add manual game to storage", err) }()
 
 	user := &storage.User{
-		Name: userName,
+		Name:   userName,
+		ChatId: chatId,
 	}
 
 	game := &storage.Game{
@@ -214,7 +215,7 @@ func (p *Processor) sendNoSearchResults(ctx context.Context, text string, chatId
 	var buttons [][]telegram.InlineKeyboardButton
 
 	button := telegram.InlineKeyboardButton{
-		Text:         "Добавить игру вручную без даты",
+		Text:         btnAddGameWithoutDate,
 		CallbackData: "add_without_date",
 	}
 	buttons = append(buttons, []telegram.InlineKeyboardButton{button})

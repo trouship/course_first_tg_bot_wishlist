@@ -204,7 +204,8 @@ func (p *Processor) addApiGame(ctx context.Context, searchGame *api.Game, platfo
 	}()
 
 	user := &storage.User{
-		Name: userName,
+		Name:   userName,
+		ChatId: chatID,
 	}
 
 	game := &storage.Game{
