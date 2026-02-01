@@ -1,5 +1,5 @@
 package telegram
 
 const (
-	btnAddGameWithoutDate = "Добавить игру без даты ➖📅"
+	btnAddGameWithoutDate = "Добавить игру без уведомления 🔕"
 )

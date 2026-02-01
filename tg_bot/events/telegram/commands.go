@@ -34,6 +34,13 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 		if err != nil {
 			p.clearState(userName)
 		} else {
+			//Иначе проверяем дату
+
+			//Если в прошлом, то не добавляем
+			if date.Before(time.Now()) {
+				return p.tg.SendMessage(ctx, chatID, msgPreviousDate)
+			}
+
 			//Иначе добавляем с датой
 			return p.addManualGameWithDate(ctx, chatID, userName, state.GameName, date)
 		}
