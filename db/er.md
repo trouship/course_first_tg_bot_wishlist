@@ -21,7 +21,7 @@ erDiagram
         id INTEGER PK
         user_id INTEGER FK
         game_id INTEGER FK
-        expected_notification_date DATETIME
+        notification_date DATETIME
         created_at DATETIME
         notified_at DATETIME
     }
