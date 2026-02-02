@@ -24,12 +24,12 @@ var (
 )
 
 type Wishlist struct {
-	Id                  int
-	User                *User
-	Game                *Game
-	ExpectedReleaseDate time.Time
-	AddedAt             time.Time
-	NotifiedAt          time.Time
+	Id               int
+	User             *User
+	Game             *Game
+	NotificationDate time.Time
+	AddedAt          time.Time
+	NotifiedAt       time.Time
 }
 
 type Source int

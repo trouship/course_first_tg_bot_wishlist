@@ -219,7 +219,7 @@ func (p *Processor) addApiGame(ctx context.Context, searchGame *api.Game, platfo
 		Game: game,
 	}
 	if platformDate != nil {
-		wishlist.ExpectedReleaseDate = platformDate.Date
+		wishlist.NotificationDate = platformDate.Date
 	}
 
 	isExists, err := p.storage.IsExists(ctx, wishlist)

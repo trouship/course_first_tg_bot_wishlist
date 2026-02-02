@@ -3,7 +3,7 @@ package notifier
 import "context"
 
 const (
-	MsgTodayGameReleases = "🆕 Сегодня выходят: 🆕"
+	MsgTodayGameReleases = "📢 Сегодня выходят:"
 )
 
 type Notifier interface {

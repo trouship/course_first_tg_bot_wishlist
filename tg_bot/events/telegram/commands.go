@@ -92,7 +92,7 @@ func (p *Processor) addManualGame(ctx context.Context, chatId int, userName stri
 		Game: game,
 	}
 	if !date.IsZero() {
-		wishlist.ExpectedReleaseDate = date
+		wishlist.NotificationDate = date
 	}
 
 	isExists, err := p.storage.IsExists(ctx, wishlist)
@@ -169,8 +169,8 @@ func (p *Processor) sendGameList(ctx context.Context, chatId int, userName strin
 
 	for _, w := range wishlist {
 		builder.WriteString(fmt.Sprintf("\n\n🎯 %s", w.Game.Name))
-		if !w.ExpectedReleaseDate.IsZero() {
-			builder.WriteString(fmt.Sprintf("\n🔜 Дата релиза: %s", w.ExpectedReleaseDate.Format("02.01.2006")))
+		if !w.NotificationDate.IsZero() {
+			builder.WriteString(fmt.Sprintf("\n🔔 Дата уведомления: %s", w.NotificationDate.Format("02.01.2006")))
 		}
 		if w.Game.ExternalURL != "" {
 			builder.WriteString(fmt.Sprintf("\n🔗 %s", w.Game.ExternalURL))

@@ -92,9 +92,9 @@ func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
 	}
 	w.Game.Id = gameId
 
-	q := `INSERT INTO wishlist (game_id, user_id, expected_release_date) VALUES (?,?,?)`
+	q := `INSERT INTO wishlist (game_id, user_id, notification_date) VALUES (?,?,?)`
 
-	_, err = s.db.ExecContext(ctx, q, gameId, userId, w.ExpectedReleaseDate)
+	_, err = s.db.ExecContext(ctx, q, gameId, userId, w.NotificationDate)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (s *Storage) getWishlistFromSqliteQuery(ctx context.Context, query string, 
 			w.NotifiedAt = notifiedDate.Time
 		}
 		if expectedReleaseDate.Valid {
-			w.ExpectedReleaseDate = expectedReleaseDate.Time
+			w.NotificationDate = expectedReleaseDate.Time
 		}
 		if externalURL.Valid {
 			g.ExternalURL = externalURL.String
@@ -252,7 +252,7 @@ func (s *Storage) getWishlistFromSqliteQuery(ctx context.Context, query string, 
 
 func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
+		SELECT w.id, w.notification_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -270,7 +270,7 @@ func (s *Storage) GetAll(ctx context.Context, u *storage.User) ([]storage.Wishli
 
 func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
+		SELECT w.id, w.notification_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -288,7 +288,7 @@ func (s *Storage) GetReleased(ctx context.Context, u *storage.User) ([]storage.W
 
 func (s *Storage) GetUnreleased(ctx context.Context, u *storage.User) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
+		SELECT w.id, w.notification_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
@@ -317,11 +317,11 @@ func (s *Storage) Remove(ctx context.Context, wishlistId int) error {
 
 func (s *Storage) GetToNotify(ctx context.Context) ([]storage.Wishlist, error) {
 	q := `
-		SELECT w.id, w.expected_release_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
+		SELECT w.id, w.notification_date, w.notified_at, w.created_at, g.id, g.name, g.source, g.external_url, u.id, u.name, u.chat_id
 		FROM wishlist w
 		INNER JOIN game g ON w.game_id = g.id
 		INNER JOIN user u on w.user_id = u.id
-		WHERE w.notified_at IS NULL AND w.expected_release_date IS NOT NULL AND date('now') >= w.expected_release_date
+		WHERE w.notified_at IS NULL AND w.notification_date IS NOT NULL AND date('now') >= w.notification_date
     `
 
 	wishlist, err := s.getWishlistFromSqliteQuery(ctx, q)
@@ -357,7 +357,7 @@ func New(path string) (*Storage, error) {
 }
 
 func (s *Storage) Init(ctx context.Context) error {
-	//TODO Add expected date in wishlist + preferred platform (nullable) if there is a platform on which it exists and there is a platform where it does not
+
 	q := `
 		CREATE TABLE IF NOT EXISTS user (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -381,7 +381,7 @@ func (s *Storage) Init(ctx context.Context) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
 			game_id INTEGER NOT NULL,
-			expected_release_date DATETIME NULL,
+			notification_date DATETIME NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			notified_at DATETIME NULL,
 			
