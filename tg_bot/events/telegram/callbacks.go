@@ -170,7 +170,7 @@ func (p *Processor) selectGameCallback(ctx context.Context, callbackId string, t
 
 	if len(oldDatePlatforms) > 0 {
 		button := telegram.InlineKeyboardButton{
-			Text:         fmt.Sprintf("%s", strings.Join(oldDatePlatforms, " | ")+" (Ранее)"),
+			Text:         btnAddGameWithoutDate,
 			CallbackData: fmt.Sprintf("add:%d", searchGame.Id),
 		}
 		buttons = append(buttons, []telegram.InlineKeyboardButton{button})

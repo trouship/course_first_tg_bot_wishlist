@@ -56,7 +56,12 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, userName
 	case RemoveCmd:
 		return p.sendRemoveList(ctx, chatID, userName)
 	default:
-		return p.searchGameList(ctx, text, chatID, userName)
+
+		if strings.HasPrefix(text, "/") {
+			return p.tg.SendMessage(ctx, chatID, msgUnknownCommand)
+		} else {
+			return p.searchGameList(ctx, text, chatID, userName)
+		}
 	}
 }
 

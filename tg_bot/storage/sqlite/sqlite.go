@@ -92,7 +92,13 @@ func (s *Storage) Add(ctx context.Context, w *storage.Wishlist) (err error) {
 	}
 	w.Game.Id = gameId
 
-	q := `INSERT INTO wishlist (game_id, user_id, notification_date) VALUES (?,?,?)`
+	var q string
+
+	if w.NotificationDate.IsZero() {
+		q = `INSERT INTO wishlist (game_id, user_id) VALUES (?,?)`
+	} else {
+		q = `INSERT INTO wishlist (game_id, user_id, notification_date) VALUES (?,?,?)`
+	}
 
 	_, err = s.db.ExecContext(ctx, q, gameId, userId, w.NotificationDate)
 	if err != nil {
